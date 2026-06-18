@@ -1,0 +1,4 @@
+# Dependency for step2html.py — OpenCASCADE (OCCT) Python bindings.
+# Reads STEP via XCAF (names + colors + assembly tree) and writes glTF.
+# Installed automatically by the ./step2html launcher into ./.venv
+cadquery-ocp

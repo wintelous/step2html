@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>__TITLE__</title>
+<style>
+  :root { --panel-w: 320px; }
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+  body { background: #2b2f33; font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+         -webkit-text-size-adjust: 100%; touch-action: none; }
+  #viewer { position: absolute; inset: 0; }
+
+  #panel { position: absolute; top: 0; left: 0; bottom: 0; width: var(--panel-w);
+    background: rgba(28,31,34,.95); color: #e8eaed; backdrop-filter: blur(6px);
+    display: flex; flex-direction: column; z-index: 20;
+    transform: translateX(0); transition: transform .22s ease; box-shadow: 2px 0 12px rgba(0,0,0,.4); }
+  #panel.closed { transform: translateX(calc(-1 * var(--panel-w) - 16px)); }
+  #panel-head { padding: 10px 12px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
+                border-bottom: 1px solid rgba(255,255,255,.1); }
+  #panel-head .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #panel-head button { background: rgba(255,255,255,.1); color: #e8eaed; border: 1px solid rgba(255,255,255,.16);
+                       border-radius: 6px; padding: 4px 9px; font-size: 13px; cursor: pointer; }
+  #filter { margin: 8px; padding: 8px 9px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.06); color: #e8eaed; font-size: 13px; outline: none; }
+  #filter::placeholder { color: #9aa0a6; }
+  .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 2px 0 14px; -webkit-overflow-scrolling: touch; }
+  #results { display: none; }
+  #results .note { color: #9aa0a6; font-size: 12px; padding: 8px 12px; }
+  .row { display: flex; align-items: center; height: 30px; padding-right: 8px; user-select: none; white-space: nowrap; }
+  .row:hover { background: rgba(255,255,255,.06); }
+  .row.selected { background: rgba(33,110,208,.5); }
+  .row.hidden-part > .label { opacity: .4; font-style: italic; }
+  .twisty { width: 20px; min-width: 20px; text-align: center; color: #9aa0a6; cursor: pointer; font-size: 10px; }
+  .twisty.leaf { visibility: hidden; }
+  .eye { width: 24px; min-width: 24px; text-align: center; cursor: pointer; opacity: .9; font-size: 13px; }
+  .swatch { width: 11px; min-width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.35); }
+  .label { flex: 1; overflow: hidden; text-overflow: ellipsis; font-size: 13px; cursor: pointer; padding: 7px 0; }
+
+  #panel-toggle { position: absolute; top: 10px; left: 10px; z-index: 25; display: none; }
+  #panel.closed ~ #panel-toggle { display: block; }
+  #toolbar { position: absolute; right: 10px; top: 10px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 15;
+             max-width: 60vw; justify-content: flex-end; }
+  .tbtn { background: rgba(255,255,255,.12); color: #e8eaed; border: 1px solid rgba(255,255,255,.18);
+          border-radius: 6px; padding: 8px 11px; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px); }
+  .tbtn:hover { background: rgba(255,255,255,.22); }
+  .tbtn.active { background: rgba(33,110,208,.6); border-color: rgba(120,170,255,.6); }
+
+  #hud { position: absolute; left: 12px; bottom: 10px; color: #cfd2d6; font-size: 12px;
+         text-shadow: 0 1px 2px rgba(0,0,0,.6); pointer-events: none; user-select: none; opacity: .8; max-width: 60vw; }
+  #spinner { position: absolute; inset: 0; display: grid; place-items: center; color: #cfd2d6; font-size: 14px; z-index: 30; }
+  #err { position: absolute; inset: 0; display: none; place-items: center; color: #ffb4a9; font-size: 14px;
+         text-align: center; padding: 24px; box-sizing: border-box; z-index: 30; }
+
+  @media (max-width: 720px) {
+    :root { --panel-w: 82vw; }
+    .row { height: 40px; } .label { padding: 11px 0; }
+    .eye { width: 34px; min-width: 34px; font-size: 17px; }
+    .twisty { width: 30px; min-width: 30px; font-size: 12px; }
+    .tbtn { padding: 11px 13px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <div id="panel">
+    <div id="panel-head">
+      <span class="title">__TITLE__</span>
+      <button id="btn-close" title="Hide panel">&times;</button>
+    </div>
+    <input id="filter" type="text" placeholder="Filter parts&hellip;" autocomplete="off" spellcheck="false" />
+    <div id="tree" class="scroller"></div>
+    <div id="results" class="scroller"></div>
+  </div>
+  <button id="panel-toggle" class="tbtn" title="Show parts">&#9776; Parts</button>
+
+  <div id="toolbar">
+    <button id="btn-fit" class="tbtn" title="Fit to view">Fit</button>
+    <button id="btn-isolate" class="tbtn" title="Show only the selected part">Isolate</button>
+    <button id="btn-showall" class="tbtn" title="Show all parts">Show all</button>
+    <button id="btn-edges" class="tbtn" title="Toggle edges">Edges</button>
+    <button id="btn-bg" class="tbtn" title="Toggle background">BG</button>
+  </div>
+
+  <div id="hud">drag = rotate &middot; two-finger / right-drag = pan &middot; pinch / scroll = zoom &middot; tap a part to select</div>
+  <div id="spinner">Loading model&hellip;</div>
+  <div id="err"></div>
+
+<script>__THREE_JS__</script>
+<script>__ORBITCONTROLS_JS__</script>
+<script>__GLTFLOADER_JS__</script>
+<script>
+var MODEL_B64 = "__MODEL_B64__";
+var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
+
+(function () {
+  function $(id){ return document.getElementById(id); }
+  function fail(msg){ var e=$('err'); e.style.display='grid'; e.textContent='Could not display model: '+msg;
+                      var s=$('spinner'); if(s) s.style.display='none'; }
+  function b64ToArrayBuffer(b64){ var bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);
+    for(var i=0;i<len;i++) bytes[i]=bin.charCodeAt(i); return bytes.buffer; }
+
+  if (typeof THREE === 'undefined') { fail('three.js failed to load'); return; }
+
+  var container=$('viewer');
+  var bgDark=0x2b2f33, bgLight=0xf2f3f5, darkBG=true;
+
+  var renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  container.appendChild(renderer.domElement);
+
+  var scene=new THREE.Scene();
+  scene.background=new THREE.Color(bgDark);
+  var camera=new THREE.PerspectiveCamera(45, container.clientWidth/container.clientHeight, 0.01, 1e6);
+  var controls=new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping=true; controls.dampingFactor=0.08;
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x404048,0.95));
+  var kl=new THREE.DirectionalLight(0xffffff,0.65); kl.position.set(1,1.3,1); scene.add(kl);
+  var fl=new THREE.DirectionalLight(0xffffff,0.35); fl.position.set(-1,-0.6,-1); scene.add(fl);
+
+  var root=null, selected=null, edgesBuilt=false, edgesOn=false, needsRender=true;
+  var HILITE=new THREE.Color(0x2f7bff);
+  var treeEl=$('tree'), resultsEl=$('results');
+  var flatIndex=[];                 // {node, lname} for the filter, built once (no DOM)
+
+  function invalidate(){ needsRender=true; }
+  controls.addEventListener('change', invalidate);
+
+  // ---------- camera fit ----------
+  function fitTo(obj){
+    obj=obj||root; if(!obj) return;
+    var box=new THREE.Box3().setFromObject(obj); if(box.isEmpty()) return;
+    var size=new THREE.Vector3(), c=new THREE.Vector3(); box.getSize(size); box.getCenter(c);
+    var maxDim=Math.max(size.x,size.y,size.z)||1;
+    var dist=(maxDim/(2*Math.tan(Math.PI*camera.fov/360)))*1.7;
+    var dir=new THREE.Vector3(1,0.7,1).normalize();
+    camera.position.copy(c.clone().add(dir.multiplyScalar(dist)));
+    camera.near=maxDim/1000; camera.far=maxDim*1000; camera.updateProjectionMatrix();
+    controls.target.copy(c); controls.update(); invalidate();
+  }
+
+  // ---------- highlight ----------
+  function setHighlight(node,on){
+    if(!node) return;
+    node.traverse(function(o){
+      if(o.isMesh && o.material && o.material.emissive){
+        if(on){ if(o.userData._emis===undefined) o.userData._emis=o.material.emissive.getHex();
+                o.material.emissive.copy(HILITE); o.material.emissiveIntensity=0.5; }
+        else if(o.userData._emis!==undefined){ o.material.emissive.setHex(o.userData._emis); o.material.emissiveIntensity=1; }
+      }
+    });
+    invalidate();
+  }
+  function select(node){
+    if(selected===node) return;
+    if(selected) setHighlight(selected,false);
+    selected=node;
+    if(selected) setHighlight(selected,true);
+    var prev=document.querySelector('.row.selected'); if(prev) prev.classList.remove('selected');
+    if(node){ reveal(node); var rec=node.userData._rec;
+              if(rec){ rec.row.classList.add('selected'); rec.row.scrollIntoView({block:'center'}); } }
+  }
+
+  // ---------- visibility ----------
+  function setVisible(node,vis){
+    node.visible=vis;
+    var rec=node.userData._rec;
+    if(rec){ rec.eye.textContent = vis ? '\u{1F441}' : '—'; rec.row.classList.toggle('hidden-part', !vis); }
+    invalidate();
+  }
+  function refreshIcons(){          // sync every already-built row to its node's visibility
+    if(!root) return;
+    root.traverse(function(o){ var rec=o.userData && o.userData._rec; if(rec){
+      rec.eye.textContent=o.visible?'\u{1F441}':'—'; rec.row.classList.toggle('hidden-part', !o.visible); }});
+  }
+  function showAll(){ if(root) root.traverse(function(o){ if(o!==root) o.visible=true; });
+                      refreshIcons(); invalidate(); }
+  function isolate(){
+    if(!selected||!root) return;
+    root.traverse(function(o){ if(o!==root) o.visible=false; });
+    var p=selected; while(p && p!==root.parent){ p.visible=true; p=p.parent; }
+    selected.traverse(function(o){ o.visible=true; });
+    refreshIcons(); fitTo(selected); invalidate();
+  }
+
+  // ---------- edges (lazy) ----------
+  function buildEdges(){
+    if(edgesBuilt||!root) return; edgesBuilt=true;
+    root.traverse(function(o){
+      if(o.isMesh && o.geometry){ try{
+        var eg=new THREE.EdgesGeometry(o.geometry,30);
+        var ln=new THREE.LineSegments(eg,new THREE.LineBasicMaterial({color:0x10141a}));
+        ln.userData._edge=true; ln.visible=edgesOn; ln.matrixAutoUpdate=false; o.add(ln); ln.updateMatrix();
+      }catch(e){} }
+    });
+  }
+  function toggleEdges(){
+    edgesOn=!edgesOn; buildEdges();
+    root.traverse(function(o){ if(o.userData && o.userData._edge!==undefined) o.visible=edgesOn; });
+    $('btn-edges').classList.toggle('active', edgesOn); invalidate();
+  }
+
+  // ---------- tree (lazy) ----------
+  function labelFor(o){
+    if(o.name && NAME_MAP[o.name]) return NAME_MAP[o.name];
+    if(o.name && o.name.trim()) return o.name.trim();
+    return o.isMesh ? 'Solid' : 'Group';
+  }
+  function childNodesOf(o){
+    var out=[]; for(var i=0;i<o.children.length;i++){ var c=o.children[i];
+      if(c.userData && c.userData._edge) continue; out.push(c); } return out;
+  }
+  function rowFor(node, depth, kids){
+    var row=document.createElement('div'); row.className='row'; row.style.paddingLeft=(4+depth*15)+'px';
+    if(!node.visible) row.classList.add('hidden-part');
+    var tw=document.createElement('span'); tw.className='twisty'+(kids&&kids.length?'':' leaf'); tw.textContent=(kids&&kids.length)?'▸':'';
+    var eye=document.createElement('span'); eye.className='eye'; eye.textContent=node.visible?'\u{1F441}':'—';
+    var lab=document.createElement('span'); lab.className='label';
+    var text=labelFor(node); lab.textContent=text; lab.title=text;
+    row.appendChild(tw); row.appendChild(eye);
+    if(node.isMesh && node.material && node.material.color){
+      var sw=document.createElement('span'); sw.className='swatch'; sw.style.background='#'+node.material.color.getHexString();
+      row.appendChild(sw);
+    }
+    row.appendChild(lab);
+    eye.addEventListener('click', function(e){ e.stopPropagation(); setVisible(node, !node.visible); });
+    lab.addEventListener('click', function(e){ e.stopPropagation(); select(selected===node ? null : node); });
+    return {row:row, eye:eye, twisty:tw};
+  }
+  function makeRow(node, depth){
+    var kids=childNodesOf(node);
+    var parts=rowFor(node, depth, kids);
+    var wrap=document.createElement('div'); wrap.appendChild(parts.row);
+    var rec={node:node, row:parts.row, eye:parts.eye, twisty:parts.twisty, open:false, built:false, kidWrap:null,
+      setOpen:function(o){
+        if(!kids.length) return; rec.open=o; parts.twisty.textContent=o?'▾':'▸';
+        if(o && !rec.built){
+          rec.built=true; rec.kidWrap=document.createElement('div');
+          var frag=document.createDocumentFragment();
+          for(var i=0;i<kids.length;i++) frag.appendChild(makeRow(kids[i], depth+1));
+          rec.kidWrap.appendChild(frag); wrap.appendChild(rec.kidWrap);
+        }
+        if(rec.kidWrap) rec.kidWrap.style.display=o?'':'none';
+      }};
+    node.userData._rec=rec;
+    parts.twisty.addEventListener('click', function(e){ e.stopPropagation(); rec.setOpen(!rec.open); });
+    return wrap;
+  }
+  function reveal(node){            // build+open ancestors top-down so the row exists & is visible
+    var chain=[], p=node.parent;
+    while(p && p!==root){ chain.unshift(p); p=p.parent; }
+    chain.forEach(function(a){ var rec=a.userData._rec; if(rec) rec.setOpen(true); });
+  }
+  function nearestPart(mesh){
+    var p=mesh; while(p && p!==root){ if(p.name && NAME_MAP[p.name]) return p; p=p.parent; } return mesh;
+  }
+
+  // ---------- filter (flat results, capped) ----------
+  var FILTER_CAP=1500;
+  $('filter').addEventListener('input', function(){
+    var q=this.value.trim().toLowerCase();
+    if(!q){ resultsEl.style.display='none'; treeEl.style.display=''; return; }
+    treeEl.style.display='none'; resultsEl.style.display='block'; resultsEl.innerHTML='';
+    var n=0, frag=document.createDocumentFragment();
+    for(var i=0;i<flatIndex.length && n<FILTER_CAP;i++){
+      if(flatIndex[i].lname.indexOf(q)>=0){
+        var node=flatIndex[i].node;
+        var parts=rowFor(node, 0, childNodesOf(node));
+        parts.row.querySelector('.twisty').classList.add('leaf');
+        parts.row.querySelector('.twisty').textContent='';
+        frag.appendChild(parts.row); n++;
+      }
+    }
+    if(n===0){ var d=document.createElement('div'); d.className='note'; d.textContent='No parts match.'; frag.appendChild(d); }
+    else if(n>=FILTER_CAP){ var d2=document.createElement('div'); d2.className='note'; d2.textContent='Showing first '+FILTER_CAP+' matches; refine the filter.'; frag.appendChild(d2); }
+    resultsEl.appendChild(frag);
+  });
+
+  // ---------- picking ----------
+  var ray=new THREE.Raycaster(), ndc=new THREE.Vector2(), down=null;
+  function pick(x,y){
+    var r=renderer.domElement.getBoundingClientRect();
+    ndc.x=((x-r.left)/r.width)*2-1; ndc.y=-((y-r.top)/r.height)*2+1;
+    ray.setFromCamera(ndc,camera);
+    var hits=ray.intersectObject(root,true);
+    for(var i=0;i<hits.length;i++){ if(hits[i].object.visible){ select(nearestPart(hits[i].object)); return; } }
+    select(null);   // clicked empty space -> clear selection
+  }
+  renderer.domElement.addEventListener('pointerdown', function(e){ down={x:e.clientX,y:e.clientY,t:Date.now()}; });
+  renderer.domElement.addEventListener('pointerup', function(e){
+    if(!down) return; var dx=e.clientX-down.x, dy=e.clientY-down.y;
+    if(Math.abs(dx)<6 && Math.abs(dy)<6 && (Date.now()-down.t)<400) pick(e.clientX,e.clientY);
+    down=null;
+  });
+
+  // ---------- load ----------
+  var loader=new THREE.GLTFLoader();
+  try{
+    loader.parse(b64ToArrayBuffer(MODEL_B64),'',function(gltf){
+      root=gltf.scene;
+      root.traverse(function(o){
+        if(o.isMesh && o.material){
+          o.material=o.material.clone();
+          o.material.side=THREE.DoubleSide;
+          if(!o.material.color) o.material.color=new THREE.Color(0xcccccc);
+          if(o.material.metalness!=null) o.material.metalness=Math.min(o.material.metalness,0.25);
+          if(o.material.roughness==null) o.material.roughness=0.65;
+        }
+      });
+      scene.add(root);
+      fitTo(root);
+      // freeze static transforms: the model never animates -> skip per-frame matrix updates
+      root.updateMatrixWorld(true);
+      root.traverse(function(o){ o.matrixAutoUpdate=false; });
+      // build the flat search index (no DOM) and the top level of the tree (lazy below)
+      var tops=childNodesOf(root);
+      root.traverse(function(o){ if(o!==root && !(o.userData&&o.userData._edge)) flatIndex.push({node:o, lname:labelFor(o).toLowerCase()}); });
+      var frag=document.createDocumentFragment();
+      for(var i=0;i<tops.length;i++) frag.appendChild(makeRow(tops[i],0));
+      treeEl.appendChild(frag);
+      var s=$('spinner'); if(s) s.style.display='none';
+      invalidate();
+    }, function(e){ fail((e&&e.message)?e.message:'parse error'); });
+  }catch(e){ fail(e.message||String(e)); }
+
+  // ---------- buttons ----------
+  $('btn-fit').onclick=function(){ fitTo(selected||root); };
+  $('btn-isolate').onclick=isolate;
+  $('btn-showall').onclick=showAll;
+  $('btn-edges').onclick=toggleEdges;
+  $('btn-bg').onclick=function(){ darkBG=!darkBG; scene.background=new THREE.Color(darkBG?bgDark:bgLight); invalidate(); };
+  $('btn-close').onclick=function(){ $('panel').classList.add('closed'); };
+  $('panel-toggle').onclick=function(){ $('panel').classList.remove('closed'); };
+  if(window.innerWidth<=720) $('panel').classList.add('closed');
+
+  window.addEventListener('resize', function(){
+    camera.aspect=container.clientWidth/container.clientHeight; camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight); invalidate();
+  });
+  // render only when something changed (saves battery; keeps 96k-object scenes smooth)
+  (function animate(){ requestAnimationFrame(animate); controls.update();
+    if(needsRender){ needsRender=false; renderer.render(scene,camera); } })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Python virtual environment (auto-created by ./step2html on first run)
+.venv/
+
+# Scratch / intermediate work
+tmp/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Editor / OS / harness
+.DS_Store
+.claude/
+
+# Private model data — never commit CAD inputs or generated viewers.
+# (The generated viewer HTML embeds the full model geometry.)
+*.EASM
+*.easm
+*.STEP
+*.step
+*.stp
+*.STP
+*.eprt
+*.sldprt
+*.sldasm
+/*.html

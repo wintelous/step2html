@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#
+# step2html — STEP -> self-contained 3D HTML viewer (macOS / Linux)
+#
+# On first run this creates a local Python virtual environment in ./.venv and
+# installs the one dependency (cascadio, OpenCASCADE bindings). Subsequent runs
+# reuse it. Then it hands off to step2html.py.
+#
+# Usage:
+#   ./step2html model.step
+#   ./step2html model.stp -o out.html --title "My Assembly"
+#   ./step2html --help
+#
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$HERE/.venv"
+PY="$VENV/bin/python"
+
+# Pick a system python to bootstrap the venv.
+bootstrap_py=""
+for cand in python3 python; do
+  if command -v "$cand" >/dev/null 2>&1; then bootstrap_py="$cand"; break; fi
+done
+if [ -z "$bootstrap_py" ]; then
+  echo "error: python3 is required but was not found on PATH." >&2
+  exit 1
+fi
+
+# Create the venv + install cascadio if needed.
+if [ ! -x "$PY" ] || ! "$PY" -c "import OCP" >/dev/null 2>&1; then
+  echo "[setup] preparing local environment in $VENV (first run, downloads OpenCASCADE ~hundreds of MB) ..." >&2
+  "$bootstrap_py" -m venv "$VENV"
+  "$PY" -m pip install --quiet --upgrade pip >/dev/null
+  "$PY" -m pip install --quiet cadquery-ocp >&2
+fi
+
+exec "$PY" "$HERE/step2html.py" "$@"
