@@ -28,9 +28,13 @@ hundred MB, downloaded once). Later runs reuse it.
 ### Viewer controls
 - **Rotate**: drag (one finger on touch) · **Pan**: right-drag / two-finger drag · **Zoom**: scroll / pinch
 - **Tap/click a part** in the 3D view to select + highlight it (and reveal it in the tree)
-- **Parts panel** (left; ☰ to open on phones): filter box, expand/collapse tree, 👁 to hide/show each
-  part or sub-assembly, click a name to select
-- **Buttons**: Fit · Isolate (show only the selection) · Show all · Edges · BG
+- **Right-click** a part (or **long-press** on touch), in the 3D view or in the tree, for a menu:
+  Hide · Make transparent / solid · Hide others · Zoom to part · Show all (· Make all solid)
+- **Parts panel** (left; *Parts* button to open on phones): filter box, expand/collapse tree, eye icon to
+  hide/show each part or sub-assembly, click a name to select, double-click to zoom to it
+- **Toolbar**: Fit · Isolate (show only the selection) · Show all · Edges · light/dark theme
+  (the theme follows the OS setting until toggled, then is remembered)
+- **Keyboard**: `F` fit · `H` hide · `T` transparent · `I` isolate · `A` show all · `E` edges · `Esc` deselect
 
 ### Options
 
