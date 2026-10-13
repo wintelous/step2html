@@ -30,11 +30,23 @@ hundred MB, downloaded once). Later runs reuse it.
 - **Tap/click a part** in the 3D view to select + highlight it (and reveal it in the tree)
 - **Right-click** a part (or **long-press** on touch), in the 3D view or in the tree, for a menu:
   Hide · Make transparent / solid · Hide others · Zoom to part · Show all (· Make all solid)
+- **View cube** (top right): click a face, edge or corner to snap to that view (26 views); drag it to
+  orbit; in a straight (face-on) view the curved arrows roll the view 90° left/right; the house
+  button returns to the default isometric view
+- **Explode** (toolbar): spreads the assembly level by level with a distance slider; *Levels* sets how
+  many layers of sub-assemblies come apart (1 = only the top level). While it is on, the right-click
+  menu has an *Exploded view* section with two tick options: *Stay in place* (the part stays fixed
+  and the rest spreads out around it)
+  and *Keep together* (its assembly doesn't come apart, e.g. a PCB with its components; from the 3D
+  view this applies to the part's parent assembly). Flagged rows get a small marker in the tree
+- **Lights** (toolbar): presets (Studio, Headlight, Soft, Dramatic) with colour-temperature
+  (2700–8000 K) and brightness sliders; the choice is remembered
 - **Parts panel** (left; *Parts* button to open on phones): filter box, expand/collapse tree, eye icon to
   hide/show each part or sub-assembly, click a name to select, double-click to zoom to it
 - **Toolbar**: Fit · Isolate (show only the selection) · Show all · Edges · light/dark theme
   (the theme follows the OS setting until toggled, then is remembered)
-- **Keyboard**: `F` fit · `H` hide · `T` transparent · `I` isolate · `A` show all · `E` edges · `Esc` deselect
+- **Keyboard**: `F` fit · `H` hide · `T` transparent · `I` isolate · `A` show all · `E` edges · `X` explode ·
+  `L` lights · `Esc` deselect
 
 ### Options
 
