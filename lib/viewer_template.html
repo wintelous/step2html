@@ -226,6 +226,8 @@
     #hud { display: none; }
   }
 </style>
+<noscript><style>#spinner, #panel, #toolbar, #viewcube, #hud, #panel-toggle { display: none !important; }
+  #err { display: grid !important; }</style></noscript>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -310,7 +312,18 @@
 
   <div id="hud" class="glass">drag to rotate &middot; right-drag to pan &middot; scroll to zoom &middot; right-click a part for options</div>
   <div id="spinner"><div class="wrap"><div class="ring"></div><div>Loading model&hellip;</div></div></div>
-  <div id="err"></div>
+  <div id="err"><noscript>This 3D viewer needs JavaScript, which this preview doesn't run.<br>
+    Open the file in a web browser (Safari, Chrome, Firefox, Edge) instead.</noscript></div>
+<script>
+  // Anything that breaks start-up shows a message instead of an endless "Loading model..."
+  window.addEventListener('error', function(ev){
+    var s=document.getElementById('spinner'), e=document.getElementById('err');
+    if(!s || s.style.display==='none' || !e) return;
+    s.style.display='none'; e.style.display='grid';
+    e.textContent='Could not display model: '+((ev && ev.message) || 'script error')+
+      '. If this is a file preview, open the file in a web browser instead.';
+  });
+</script>
 
 <script>__THREE_JS__</script>
 <script>__ORBITCONTROLS_JS__</script>
@@ -331,7 +344,10 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
 
   var container=$('viewer');
 
-  var renderer=new THREE.WebGLRenderer({antialias:true, alpha:true});   // transparent: CSS gradient shows through
+  var renderer;
+  try{ renderer=new THREE.WebGLRenderer({antialias:true, alpha:true}); }   // transparent: CSS gradient shows through
+  catch(e){ fail('3D graphics (WebGL) are not available here. Open the file in a web browser '+
+                 '(Safari, Chrome, Firefox, Edge) with hardware acceleration enabled.'); return; }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setClearColor(0x000000, 0);
@@ -748,6 +764,8 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   //   _rigid  ("keep together") - the assembly doesn't split, but still moves as one block
   //   _pinned ("stay in place") - the node stays fixed in space: none of its ancestors move either, and at
   //                               each level the siblings spread from the pinned parts instead of the centre
+  // A child whose box encloses the pinned parts' centre (e.g. a housing around a pinned board) doesn't move as a block:
+  // "away from a point inside it" is meaningless, so it stays and opens around its own centre a level deeper.
   var EX={on:false, f:0, levels:1, max:1, moves:[], anim:null, ready:false, SCALE:1.5};
   function exKids(o){ var out=[]; for(var i=0;i<o.children.length;i++){ var c=o.children[i];
     if(c.userData._hasNamed) out.push(c); } return out; }
@@ -779,7 +797,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
       if(o.userData._pinned) b.copy(boxes.get(o));
       else for(var i=0;i<o.children.length;i++){ var c=o.children[i]; if(!c.userData._edge) b.union(pins(c)); }
       pinBoxes.set(o,b); return b; })(root);
-    var inv=new THREE.Matrix4(), pc=new THREE.Vector3(), cc=new THREE.Vector3();
+    var inv=new THREE.Matrix4(), pc=new THREE.Vector3(), cc=new THREE.Vector3(), anchorW=new THREE.Vector3();
     (function walk(o, lvl){
       var kids=exKids(o);
       if(o.userData._rigid) return;
@@ -787,10 +805,11 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
       if(lvl>=EX.levels) return;
       inv.copy(o.matrixWorld).invert();
       var pb=pinBoxes.get(o);         // spread from the pinned parts if there are any, else from the centre
-      (pb.isEmpty() ? boxes.get(o) : pb).getCenter(pc); pc.applyMatrix4(inv);
+      (pb.isEmpty() ? boxes.get(o) : pb).getCenter(anchorW); pc.copy(anchorW).applyMatrix4(inv);
       kids.forEach(function(k){
         var kb=boxes.get(k); if(kb.isEmpty()) return;
         if(!pinBoxes.get(k).isEmpty()) return;          // holds a pinned part -> stays put
+        if(!pb.isEmpty() && kb.containsPoint(anchorW)) return;   // encloses the pinned parts -> stays, opens next level
         kb.getCenter(cc); cc.applyMatrix4(inv);
         EX.moves.push({o:k, p0:k.position.clone(), v:cc.clone().sub(pc)});
       });
