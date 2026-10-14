@@ -47,8 +47,9 @@ hundred MB, downloaded once). Later runs reuse it.
   (shown as ≈). Measurements belong to the assembled model and are hidden while exploded
 - **Lights** (toolbar): presets (Studio, Headlight, Soft, Dramatic) with colour-temperature
   (2700–8000 K) and brightness sliders; the choice is remembered
-- **Parts panel** (left; *Parts* button to open on phones): filter box, expand/collapse tree, eye icon to
-  hide/show each part or sub-assembly, click a name to select, double-click to zoom to it
+- **Parts panel** (left; *Parts* button to open on phones): filter box, *Expand all* / *Collapse all*,
+  eye icon to hide/show each part or sub-assembly, click a name to select, double-click to zoom to it;
+  transparent parts show a dashed swatch, fully transparent assemblies a small transparency icon
 - **Toolbar**: Fit · Isolate (show only the selection) · Show all · Edges · light/dark theme
   (the theme follows the OS setting until toggled, then is remembered)
 - **Keyboard**: `F` fit · `H` hide · `T` transparent · `I` isolate · `A` show all · `E` edges · `X` explode ·

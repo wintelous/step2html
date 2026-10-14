@@ -87,7 +87,16 @@
   .row.selected { background: var(--accent-soft); }
   .row.selected .label { color: var(--text); font-weight: 500; }
   .row.hidden-part .label, .row.hidden-part .swatch { opacity: .42; }
-  .row.transp-part .swatch { background-color: transparent !important; border-style: dashed; }
+  .row.transp-part .swatch { background-color: transparent !important; border-style: dashed; border-color: var(--text) !important; }
+  .tmark { display: none; color: var(--text-3); margin-left: 4px; flex: none; }
+  .tmark svg.i { width: 13px; height: 13px; }
+  .row.transp-part .tmark { display: grid; }
+  .tree-tools { display: flex; gap: 2px; margin: -2px 6px 6px; }
+  .tree-tools button { display: flex; align-items: center; gap: 5px; background: none; border: 0; border-radius: 6px;
+                       padding: 4px 6px; color: var(--text-2); cursor: pointer; font-size: 12px; }
+  .tree-tools button:hover { background: var(--hover); color: var(--text); }
+  .tree-tools button:disabled { opacity: .4; cursor: default; background: none; }
+  .tree-tools svg.i { width: 13px; height: 13px; }
   .twisty { width: 18px; height: 100%; display: grid; place-items: center; color: var(--text-3); cursor: pointer; flex: none; }
   .twisty svg { width: 12px; height: 12px; transition: transform .15s; }
   .twisty.open svg { transform: rotate(90deg); }
@@ -279,6 +288,8 @@
       <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3H7l3-3z"/><path d="M12 12v8"/></symbol>
       <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.5 16.5l13-13 4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M7 9l5-5 5 5M7 15l5 5 5-5"/></symbol>
+      <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M7 4l5 5 5-5M7 20l5-5 5 5"/></symbol>
       <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></symbol>
       <symbol id="i-solid" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.5" fill="currentColor" fill-opacity=".25"/></symbol>
     </defs>
@@ -293,6 +304,10 @@
     </div>
     <div class="search"><svg class="i"><use href="#i-search"/></svg>
       <input id="filter" type="text" placeholder="Filter parts" autocomplete="off" spellcheck="false" /></div>
+    <div class="tree-tools">
+      <button id="tree-expand" title="Expand the whole tree"><svg class="i"><use href="#i-expand"/></svg>Expand all</button>
+      <button id="tree-collapse" title="Collapse the whole tree"><svg class="i"><use href="#i-collapse"/></svg>Collapse all</button>
+    </div>
     <div id="tree" class="scroller"></div>
     <div id="results" class="scroller"></div>
   </div>
@@ -916,13 +931,16 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     var text=labelFor(node); lab.textContent=text; lab.title=text;
     var eye=document.createElement('span'); eye.className='eye';
     row.appendChild(tw);
+    var sw=null;
     if(node.isMesh && node.material && node.material.color){
-      var sw=document.createElement('span'); sw.className='swatch';
+      sw=document.createElement('span'); sw.className='swatch';
       sw.style.background='#'+node.material.color.getHexString(); sw.style.borderColor='#'+node.material.color.getHexString();
       row.appendChild(sw);
     }
     var flags=document.createElement('span'); flags.className='flags';
-    row.appendChild(lab); row.appendChild(flags); row.appendChild(eye);
+    row.appendChild(lab);
+    if(!sw){ var tm=document.createElement('span'); tm.className='tmark'; tm.title='Transparent'; tm.innerHTML=icon('transp'); row.appendChild(tm); }
+    row.appendChild(flags); row.appendChild(eye);
     var rec={node:node, row:row, eye:eye, twisty:tw, flags:flags, fl:''};
     syncRow(rec);
     eye.addEventListener('click', function(e){ e.stopPropagation(); setVisible(node, !node.visible); });
@@ -962,9 +980,30 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
 
   // ---------- filter (flat results, capped) ----------
   var FILTER_CAP=1500;
+  // ---------- expand / collapse all ----------
+  var EXPAND_LIMIT=20000;             // rows built by "Expand all" (huge assemblies stay usable)
+  function expandAll(){
+    if(!root) return;
+    var q=childNodesOf(root), i=0, rows=q.length;
+    while(i<q.length){
+      var n=q[i++], rec=n.userData._rec, kids=childNodesOf(n);
+      if(!rec || !rec.setOpen || !kids.length) continue;
+      if(rows+kids.length>EXPAND_LIMIT) continue;      // too big: leave this branch closed
+      rows+=kids.length; rec.setOpen(true); for(var k=0;k<kids.length;k++) q.push(kids[k]);
+    }
+  }
+  function collapseAll(){
+    if(!root) return;
+    root.traverse(function(o){ var rec=o.userData && o.userData._rec; if(rec && rec.open) rec.setOpen(false); });
+    treeEl.scrollTop=0;
+  }
+  $('tree-expand').onclick=expandAll;
+  $('tree-collapse').onclick=collapseAll;
+
   $('filter').addEventListener('input', function(){
     var q=this.value.trim().toLowerCase();
     resultRecs=[];
+    $('tree-expand').disabled=$('tree-collapse').disabled=!!q;
     if(!q){ resultsEl.style.display='none'; treeEl.style.display=''; resultsEl.innerHTML=''; return; }
     treeEl.style.display='none'; resultsEl.style.display='block'; resultsEl.innerHTML='';
     var n=0, frag=document.createDocumentFragment();
