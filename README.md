@@ -12,6 +12,21 @@ Runs natively on **macOS and Linux**.
 STEP  ──[OpenCASCADE XCAF]──►  glTF (geometry + colors + names + tree)  ──►  embedded three.js HTML
 ```
 
+## Desktop app
+
+**Step2HTML** is a small desktop app for the same conversion: choose (or drop) a STEP file, pick where
+to save, press **Create viewer**. Options: viewer title and mesh detail (Coarse / Standard / Fine). It
+follows the system's light/dark mode and can open the result in the browser when done.
+
+- **macOS**: `Step2HTML-<version>-macos-<arch>.dmg`. Drag the app to Applications (first launch of
+  a downloaded copy: right-click → Open, as it isn't notarized).
+- **Linux**: `.deb` for Debian/Ubuntu, `.pkg.tar.zst` for Arch; both also install the `step2html`
+  command.
+
+Everything is bundled (no Python setup needed). To build the packages yourself see
+[packaging/README.md](packaging/README.md). To run the app from source:
+`pip install cadquery-ocp PySide6-Essentials` and `python3 step2html_gui.py`.
+
 ## Usage
 
 ```bash

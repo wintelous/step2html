@@ -1,0 +1,29 @@
+# Arch Linux package for Step2HTML, built from the prebuilt Linux bundle
+# (packaging/build_linux.sh puts this file next to step2html-<version>-linux-x86_64.tar.gz).
+#   makepkg -si
+pkgname=step2html
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Convert STEP CAD models into self-contained 3D HTML viewers (desktop app + CLI)"
+arch=('x86_64')
+license=('custom')
+depends=('glibc' 'libglvnd' 'libxkbcommon' 'libxkbcommon-x11' 'fontconfig' 'freetype2' 'dbus' 'glib2'
+         'libx11' 'libxcb' 'xcb-util-cursor' 'xcb-util-wm' 'xcb-util-image' 'xcb-util-keysyms'
+         'xcb-util-renderutil')
+options=('!strip' '!debug')
+source=("step2html-$pkgver-linux-x86_64.tar.gz" 'step2html.desktop' 'step2html-cli'
+        'step2html-16.png' 'step2html-32.png' 'step2html-48.png' 'step2html-64.png'
+        'step2html-128.png' 'step2html-256.png' 'step2html-512.png')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -d "$pkgdir/opt"
+  cp -a "$srcdir/Step2HTML" "$pkgdir/opt/step2html"
+  install -d "$pkgdir/usr/bin"
+  ln -s /opt/step2html/step2html-gui "$pkgdir/usr/bin/step2html-gui"
+  install -Dm755 "$srcdir/step2html-cli" "$pkgdir/usr/bin/step2html"
+  install -Dm644 "$srcdir/step2html.desktop" "$pkgdir/usr/share/applications/step2html.desktop"
+  for sz in 16 32 48 64 128 256 512; do
+    install -Dm644 "$srcdir/step2html-$sz.png" "$pkgdir/usr/share/icons/hicolor/${sz}x${sz}/apps/step2html.png"
+  done
+}

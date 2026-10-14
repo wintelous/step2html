@@ -1,0 +1,5 @@
+# Build dependencies for the Step2HTML desktop app (see packaging/README.md).
+# Pinned so macOS and Linux builds bundle the same versions.
+cadquery-ocp==8.0.1.1.0
+PySide6-Essentials==6.12.0
+pyinstaller==6.22.3

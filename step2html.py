@@ -31,7 +31,10 @@ import os
 import sys
 import tempfile
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+__version__ = "1.0.0"
+
+# When bundled into the desktop app (PyInstaller), the assets live in the unpacked bundle.
+HERE = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file__))
 LIB = os.path.join(HERE, "lib")
 
 
@@ -68,12 +71,20 @@ def convert_step_to_glb(inp, glb_path, tol_linear, tol_angular):
     from OCP.STEPCAFControl import STEPCAFControl_Reader
     from OCP.IFSelect import IFSelect_RetDone
     from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ColorType
-    from OCP.TDF import TDF_LabelSequence, TDF_Label, TDF_Tool
+    from OCP.TDF import TDF_Label, TDF_Tool
+    try:
+        from OCP.TDF import TDF_LabelSequence                     # cadquery-ocp <= 7.7
+    except ImportError:                                           # cadquery-ocp >= 7.8 moved it
+        from OCP.collections import Sequence_TDF_Label as TDF_LabelSequence
     from OCP.TDataStd import TDataStd_Name
     from OCP.Quantity import Quantity_Color
     from OCP.BRepMesh import BRepMesh_IncrementalMesh
     from OCP.RWGltf import RWGltf_CafWriter
-    from OCP.TColStd import TColStd_IndexedDataMapOfStringString
+    try:
+        from OCP.TColStd import TColStd_IndexedDataMapOfStringString
+    except ImportError:
+        from OCP.collections import (IndexedDataMap_TCollection_AsciiString_TCollection_AsciiString
+                                     as TColStd_IndexedDataMapOfStringString)
     from OCP.Message import Message_ProgressRange
 
     doc = TDocStd_Document(TCollection_ExtendedString("BinXCAF"))
@@ -174,7 +185,7 @@ def convert_step_to_glb(inp, glb_path, tol_linear, tol_angular):
     return name_map, len(colors)
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="step2html",
         description="Convert a STEP file into a self-contained 3D HTML viewer "
@@ -190,7 +201,8 @@ def main():
                     help="angular tessellation deflection in radians (default: 0.5)")
     ap.add_argument("--keep-glb", metavar="PATH",
                     help="also write the intermediate .glb to PATH")
-    args = ap.parse_args()
+    ap.add_argument("--version", action="version", version="%(prog)s " + __version__)
+    args = ap.parse_args(argv)
 
     inp = args.input
     if not os.path.isfile(inp):
@@ -225,17 +237,17 @@ def main():
         os.close(fd)
         cleanup = True
 
-    name_map, n_colors = convert_step_to_glb(inp, glb_path,
-                                             args.tol_linear, args.tol_angular)
-
-    glb_size = os.path.getsize(glb_path)
-    if glb_size == 0:
-        die("conversion produced an empty model (no tessellated geometry).")
-
-    with open(glb_path, "rb") as f:
-        b64 = base64.b64encode(f.read()).decode("ascii")
-    if cleanup:
-        os.remove(glb_path)
+    try:
+        name_map, n_colors = convert_step_to_glb(inp, glb_path,
+                                                 args.tol_linear, args.tol_angular)
+        glb_size = os.path.getsize(glb_path)
+        if glb_size == 0:
+            die("conversion produced an empty model (no tessellated geometry).")
+        with open(glb_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("ascii")
+    finally:
+        if cleanup and os.path.exists(glb_path):
+            os.remove(glb_path)
 
     sys.stderr.write("[4/4] writing HTML (geometry %s, %d named parts, %d distinct "
                      "color%s) ...\n"

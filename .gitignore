@@ -24,3 +24,7 @@ __pycache__/
 *.sldprt
 *.sldasm
 /*.html
+
+# Desktop app build output
+build/
+dist/

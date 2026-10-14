@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Step2HTML
+GenericName=STEP to HTML converter
+Comment=Turn a STEP CAD model into a self-contained 3D HTML viewer
+Exec=/opt/step2html/step2html-gui %f
+Icon=step2html
+Terminal=false
+Categories=Graphics;3DGraphics;Engineering;
+MimeType=model/step;application/step;model/x-step;
+Keywords=STEP;STP;CAD;3D;viewer;HTML;
+StartupWMClass=step2html-gui

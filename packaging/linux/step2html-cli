@@ -1,0 +1,3 @@
+#!/bin/sh
+# Command-line converter from the Step2HTML desktop package (same options as step2html.py).
+exec /opt/step2html/step2html-gui --convert-cli "$@"
