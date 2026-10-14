@@ -772,8 +772,14 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
       rec.flags.innerHTML=(n.userData._rigid?'<span title="Keep together (exploded view)">'+icon('link')+'</span>':'')+
                           (n.userData._pinned?'<span title="Stay in place (exploded view)">'+icon('pin')+'</span>':''); }
   }
+  // Visibility lives in the parts: hiding/showing an assembly applies to everything inside it, and every
+  // assembly above mirrors its contents (hidden only when all of its children are hidden).
+  function showNode(node){ setVisible(node, true); }
   function setVisible(node,vis){
-    node.visible=vis; refreshIcons(); invalidate();
+    node.traverse(function(o){ if(!o.userData._edge) o.visible=vis; });
+    for(var p=node.parent; p && p!==root; p=p.parent)
+      p.visible = vis || childNodesOf(p).some(function(c){ return c.visible; });
+    refreshIcons(); invalidate();
   }
   function refreshIcons(){          // sync every already-built row to its node's state
     if(!root) return;
@@ -1048,7 +1054,9 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     if(node){
       var tr=isTransparent(node);
       items.push({title:labelFor(node)});
-      items.push({icon:'eye-off', label:'Hide', key:'H', run:function(){ setVisible(node,false); if(selected===node) select(null); }});
+      items.push(shownInScene(node)
+        ? {icon:'eye-off', label:'Hide', key:'H', run:function(){ setVisible(node,false); if(selected===node) select(null); }}
+        : {icon:'eye', label:'Show', key:'H', run:function(){ showNode(node); }});
       items.push(tr ? {icon:'solid',  label:'Make solid',       key:'T', run:function(){ setTransparent(node,false); }}
                     : {icon:'transp', label:'Make transparent', key:'T', run:function(){ setTransparent(node,true); }});
       items.push({icon:'isolate', label:'Hide others', key:'I', run:function(){ isolate(node); }});
@@ -1415,7 +1423,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     else if(k==='l'){ toggleLightsPanel(); }
     else if(k==='m'){ setMeasure(!MS.on); }
     else if(k==='i' && selected){ isolate(selected); }
-    else if(k==='h' && selected){ var s=selected; setVisible(s,false); select(null); }
+    else if(k==='h' && selected){ var s=selected; if(shownInScene(s)){ setVisible(s,false); select(null); } else showNode(s); }
     else if(k==='t' && selected){ setTransparent(selected, !isTransparent(selected)); }
     else return;
     closeMenu(); e.preventDefault();
