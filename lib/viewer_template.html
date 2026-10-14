@@ -58,6 +58,12 @@
     border-radius: var(--radius); display: flex; flex-direction: column; z-index: 20; overflow: hidden;
     transition: transform .25s cubic-bezier(.2,.8,.2,1), opacity .2s; }
   #panel.closed { transform: translateX(calc(-100% - 2 * var(--gap))); opacity: 0; pointer-events: none; }
+  #panel.resizing { transition: none; user-select: none; }
+  #panel-resize { position: absolute; top: 0; right: 0; bottom: 0; width: 8px; cursor: ew-resize; z-index: 3; touch-action: none; }
+  #panel-resize::after { content: ''; position: absolute; top: 50%; right: 2px; width: 3px; height: 40px; transform: translateY(-50%);
+                         border-radius: 2px; background: var(--accent); opacity: 0; transition: opacity .15s; }
+  #panel-resize:hover::after, #panel.resizing #panel-resize::after { opacity: .9; }
+  @media (max-width: 720px) { #panel-resize { display: none; } }
   #panel-head { padding: 12px 10px 10px 14px; display: flex; align-items: flex-start; gap: 8px; }
   #panel-head .titles { flex: 1; min-width: 0; }
   #panel-head .title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -310,6 +316,7 @@
     </div>
     <div id="tree" class="scroller"></div>
     <div id="results" class="scroller"></div>
+    <div id="panel-resize" title="Drag to resize &middot; double-click to reset"></div>
   </div>
   <button id="panel-toggle" class="tbtn glass" title="Show parts"><svg class="i"><use href="#i-menu"/></svg><span>Parts</span></button>
 
@@ -1476,6 +1483,35 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   $('btn-edges').onclick=toggleEdges;
   $('btn-close').onclick=function(){ $('panel').classList.add('closed'); };
   $('panel-toggle').onclick=function(){ $('panel').classList.remove('closed'); };
+
+  // ---------- resizable parts panel (desktop) ----------
+  (function(){
+    var handle=$('panel-resize'), panel=$('panel'), rootStyle=document.documentElement.style, MINW=220, KEY='step2html-panel-w';
+    var wanted=0; try{ wanted=+localStorage.getItem(KEY)||0; }catch(e){}
+    function maxW(){ return Math.max(MINW, Math.min(760, window.innerWidth*0.6)); }
+    function apply(){                 // phones keep the CSS drawer width; desktop uses the chosen width, clamped
+      if(!wanted || window.innerWidth<=720){ rootStyle.removeProperty('--panel-w'); return; }
+      rootStyle.setProperty('--panel-w', Math.round(Math.max(MINW, Math.min(maxW(), wanted)))+'px');
+    }
+    apply();
+    var drag=null;
+    handle.addEventListener('pointerdown', function(e){
+      e.preventDefault(); e.stopPropagation();
+      drag={x:e.clientX, w:parseFloat(getComputedStyle(panel).width)};   // CSS width (no borders) = --panel-w
+      try{ handle.setPointerCapture(e.pointerId); }catch(_){}
+      panel.classList.add('resizing');
+    });
+    handle.addEventListener('pointermove', function(e){ if(!drag) return; wanted=drag.w+e.clientX-drag.x; apply(); });
+    function end(){
+      if(!drag) return; drag=null; panel.classList.remove('resizing');
+      wanted=Math.round(parseFloat(getComputedStyle(panel).width));
+      try{ localStorage.setItem(KEY, wanted); }catch(e){}
+    }
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+    handle.addEventListener('dblclick', function(){ wanted=0; apply(); try{ localStorage.removeItem(KEY); }catch(e){} });
+    window.addEventListener('resize', apply);
+  })();
   if(window.innerWidth<=720) $('panel').classList.add('closed');
 
   function onResize(){
