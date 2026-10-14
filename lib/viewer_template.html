@@ -322,7 +322,7 @@
 
   <div id="toolbar" class="glass">
     <button id="btn-fit" class="tbtn" title="Fit to view (F)"><svg class="i"><use href="#i-fit"/></svg><span class="lbl">Fit</span></button>
-    <button id="btn-isolate" class="tbtn" title="Show only the selected part (I)" disabled><svg class="i"><use href="#i-isolate"/></svg><span class="lbl">Isolate</span></button>
+    <button id="btn-isolate" class="tbtn" title="Show only the selection (I)" disabled><svg class="i"><use href="#i-isolate"/></svg><span class="lbl">Isolate</span></button>
     <button id="btn-showall" class="tbtn" title="Show all parts (A)"><svg class="i"><use href="#i-showall"/></svg><span class="lbl">Show all</span></button>
     <button id="btn-edges" class="tbtn" title="Toggle edges (E)"><svg class="i"><use href="#i-edges"/></svg><span class="lbl">Edges</span></button>
     <button id="btn-explode" class="tbtn" title="Exploded view (X)"><svg class="i"><use href="#i-explode"/></svg><span class="lbl">Explode</span></button>
@@ -433,6 +433,9 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   makeControls(Y_UP);
 
   var root=null, selected=null, edgesBuilt=false, edgesOn=false, needsRender=true;
+  var selection=[];                   // every selected node; `selected` is the last one picked (range anchor)
+  var IS_MAC=/Mac|iPhone|iPad|iPod/.test(navigator.platform||'') || /Mac/.test(navigator.userAgent);
+  var PART_COUNT_TEXT='';
   var HILITE=new THREE.Color(0x2f7bff), TRANSP_OPACITY=0.22;
   var treeEl=$('tree'), resultsEl=$('results');
   var flatIndex=[];                 // {node, lname} for the filter, built once (no DOM)
@@ -455,7 +458,8 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   var HOME_DIR=new THREE.Vector3(1,0.7,1).normalize(), tween=null;
   function fitTo(obj){
     obj=obj||root; if(!obj) return;
-    var box=new THREE.Box3().setFromObject(obj); if(box.isEmpty()) return;
+    var objs=Array.isArray(obj) ? obj : [obj], box=new THREE.Box3();
+    objs.forEach(function(o){ box.expandByObject(o); }); if(box.isEmpty()) return;
     var size=new THREE.Vector3(), c=new THREE.Vector3(); box.getSize(size); box.getCenter(c);
     var maxDim=Math.max(size.x,size.y,size.z)||1;
     var tanV=Math.tan(Math.PI*camera.fov/360), tanMin=Math.min(tanV, tanV*camera.aspect);   // portrait: width limits
@@ -739,16 +743,42 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     });
     invalidate();
   }
-  function select(node){
-    if(selected===node) return;
-    if(selected) setHighlight(selected,false);
-    selected=node;
-    if(selected) setHighlight(selected,true);
-    $('btn-isolate').disabled=!selected;
+  function setSelection(list, primary, noScroll){
+    var uniq=[]; list.forEach(function(n){ if(n && uniq.indexOf(n)<0) uniq.push(n); });
+    selection.forEach(function(n){ setHighlight(n,false); });
+    selection=uniq;
+    selected=(primary && uniq.indexOf(primary)>=0) ? primary : (uniq[uniq.length-1]||null);
+    selection.forEach(function(n){ setHighlight(n,true); });
+    $('btn-isolate').disabled=!selection.length;
     var prev=document.querySelectorAll('.row.selected'); for(var i=0;i<prev.length;i++) prev[i].classList.remove('selected');
-    resultRecs.forEach(function(r){ if(r.node===node) r.row.classList.add('selected'); });
-    if(node){ reveal(node); var rec=node.userData._rec;
-              if(rec){ rec.row.classList.add('selected'); if(treeEl.style.display!=='none') rec.row.scrollIntoView({block:'nearest'}); } }
+    resultRecs.forEach(function(r){ if(selection.indexOf(r.node)>=0) r.row.classList.add('selected'); });
+    selection.forEach(function(n){ var rec=n.userData._rec; if(rec) rec.row.classList.add('selected'); });
+    if(selected){ reveal(selected); var rec=selected.userData._rec;
+                  if(rec){ rec.row.classList.add('selected');
+                           if(!noScroll && treeEl.style.display!=='none') rec.row.scrollIntoView({block:'nearest'}); } }
+    if(PART_COUNT_TEXT) $('part-count').textContent=PART_COUNT_TEXT+(selection.length>1 ? ' \u00b7 '+selection.length+' selected' : '');
+  }
+  function select(node){ setSelection(node ? [node] : [], node); }
+  function toggleSelect(node){        // Cmd/Ctrl-click
+    var l=selection.slice(), i=l.indexOf(node);
+    if(i>=0) l.splice(i,1); else l.push(node);
+    setSelection(l, i>=0 ? null : node);
+  }
+  function rangeSelect(node, row){    // Shift-click in the tree: visible rows between the anchor and this one
+    var box=row.parentNode; while(box && box!==treeEl && box!==resultsEl) box=box.parentNode;
+    var anchorRow=null;
+    if(selected){ if(box===treeEl){ var ar=selected.userData._rec; anchorRow=ar && ar.row; }
+                  else resultRecs.forEach(function(r){ if(r.node===selected) anchorRow=r.row; }); }
+    var rows=Array.prototype.filter.call(box.querySelectorAll('.row'), function(r){ return r.offsetParent!==null; });
+    var a=rows.indexOf(anchorRow), b=rows.indexOf(row);
+    if(a<0 || b<0){ select(node); return; }
+    var lo=Math.min(a,b), hi=Math.max(a,b), list=[];
+    for(var k=lo;k<=hi;k++) list.push(rows[k]._node);
+    setSelection(list, selected, true);           // the anchor stays, so further Shift-clicks re-span from it
+  }
+  function menuTargetFor(node){       // right-click inside the selection acts on all of it
+    if(node && selection.length>1 && selection.indexOf(node)>=0) return;
+    select(node);
   }
 
   // ---------- visibility / transparency ----------
@@ -760,12 +790,12 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   function anyTransparent(){
     var r=false; if(root) root.traverse(function(o){ if(o.isMesh && o.userData._transp) r=true; }); return r;
   }
-  function setTransparent(node,on){
-    node.traverse(function(o){
+  function setTransparent(nodes,on){
+    (Array.isArray(nodes) ? nodes : [nodes]).forEach(function(node){ node.traverse(function(o){
       if(!o.isMesh || !o.material || (o.userData&&o.userData._edge)) return;
       var m=o.material; o.userData._transp=on;
       m.transparent=on; m.opacity=on?TRANSP_OPACITY:1; m.depthWrite=!on; m.needsUpdate=true;
-    });
+    }); });
     refreshIcons(); invalidate();
   }
   function syncRow(rec){
@@ -782,10 +812,12 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   // Visibility lives in the parts: hiding/showing an assembly applies to everything inside it, and every
   // assembly above mirrors its contents (hidden only when all of its children are hidden).
   function showNode(node){ setVisible(node, true); }
-  function setVisible(node,vis){
-    node.traverse(function(o){ if(!o.userData._edge) o.visible=vis; });
-    for(var p=node.parent; p && p!==root; p=p.parent)
-      p.visible = vis || childNodesOf(p).some(function(c){ return c.visible; });
+  function setVisible(nodes,vis){
+    (Array.isArray(nodes) ? nodes : [nodes]).forEach(function(node){
+      node.traverse(function(o){ if(!o.userData._edge) o.visible=vis; });
+      for(var p=node.parent; p && p!==root; p=p.parent)
+        p.visible = vis || childNodesOf(p).some(function(c){ return c.visible; });
+    });
     refreshIcons(); invalidate();
   }
   function refreshIcons(){          // sync every already-built row to its node's state
@@ -796,12 +828,14 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   function showAll(){ if(root) root.traverse(function(o){ if(o!==root && !(o.userData&&o.userData._edge)) o.visible=true; });
                       if(edgesBuilt) setEdgesVisible(edgesOn);
                       refreshIcons(); invalidate(); }
-  function isolate(node){
-    node=node||selected; if(!node||!root) return;
+  function isolate(nodes){
+    nodes=nodes||selection; if(!Array.isArray(nodes)) nodes=[nodes]; if(!nodes.length || !root) return;
     root.traverse(function(o){ if(o!==root && !(o.userData&&o.userData._edge)) o.visible=false; });
-    var p=node; while(p && p!==root){ p.visible=true; p=p.parent; }
-    node.traverse(function(o){ if(!(o.userData&&o.userData._edge)) o.visible=true; });
-    refreshIcons(); fitTo(node); invalidate();
+    nodes.forEach(function(node){
+      for(var p=node; p && p!==root; p=p.parent) p.visible=true;
+      node.traverse(function(o){ if(!(o.userData&&o.userData._edge)) o.visible=true; });
+    });
+    refreshIcons(); fitTo(nodes); invalidate();
   }
   function shownInScene(o){ while(o){ if(!o.visible) return false; o=o.parent; } return true; }
 
@@ -911,8 +945,8 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     $('ex-levels').textContent=EX.levels; $('ex-max').textContent='of '+EX.max;
     $('ex-minus').disabled=EX.levels<=1; $('ex-plus').disabled=EX.levels>=EX.max;
   }
-  function setExFlag(node, flag, on){  // flag: '_rigid' | '_pinned'
-    node.userData[flag]=on;
+  function setExFlag(nodes, flag, on){ // flag: '_rigid' | '_pinned'
+    (Array.isArray(nodes) ? nodes : [nodes]).forEach(function(n){ n.userData[flag]=on; });
     refreshIcons();
     if(EX.on) exRecompute(); else if(EX.ready) exSyncUI();
   }
@@ -957,10 +991,15 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     var rec={node:node, row:row, eye:eye, twisty:tw, flags:flags, fl:''};
     syncRow(rec);
     eye.addEventListener('click', function(e){ e.stopPropagation(); setVisible(node, !node.visible); });
-    lab.addEventListener('click', function(e){ e.stopPropagation(); if(suppressClick()) return; select(selected===node ? null : node); });
+    row._node=node;
+    lab.addEventListener('click', function(e){ e.stopPropagation(); if(suppressClick()) return;
+      if(e.shiftKey && selected) rangeSelect(node, row);
+      else if(e.metaKey || e.ctrlKey) toggleSelect(node);
+      else select(selection.length===1 && selected===node ? null : node);
+    });
     lab.addEventListener('dblclick', function(e){ e.stopPropagation(); select(node); fitTo(node); });
-    row.addEventListener('contextmenu', function(e){ e.preventDefault(); select(node); openMenu(node, e.clientX, e.clientY); });
-    attachLongPress(row, function(x,y){ select(node); openMenu(node, x, y, true); });
+    row.addEventListener('contextmenu', function(e){ e.preventDefault(); menuTargetFor(node); openMenu(node, e.clientX, e.clientY); });
+    attachLongPress(row, function(x,y){ menuTargetFor(node); openMenu(node, x, y, true); });
     return rec;
   }
   function makeRow(node, depth){
@@ -1059,25 +1098,28 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   function openMenu(node, x, y, touch){
     var items=[];
     if(node){
-      var tr=isTransparent(node);
-      items.push({title:labelFor(node)});
-      items.push(shownInScene(node)
-        ? {icon:'eye-off', label:'Hide', key:'H', run:function(){ setVisible(node,false); if(selected===node) select(null); }}
-        : {icon:'eye', label:'Show', key:'H', run:function(){ showNode(node); }});
-      items.push(tr ? {icon:'solid',  label:'Make solid',       key:'T', run:function(){ setTransparent(node,false); }}
-                    : {icon:'transp', label:'Make transparent', key:'T', run:function(){ setTransparent(node,true); }});
-      items.push({icon:'isolate', label:'Hide others', key:'I', run:function(){ isolate(node); }});
-      items.push({icon:'fit', label:'Zoom to part', key:'F', run:function(){ fitTo(node); }});
+      var T=(selection.length>1 && selection.indexOf(node)>=0) ? selection.slice() : [node], multi=T.length>1;
+      var anyShown=T.some(shownInScene), allTr=T.every(isTransparent);
+      items.push({title: multi ? T.length+' parts selected' : labelFor(node)});
+      items.push(anyShown
+        ? {icon:'eye-off', label:'Hide', key:'H', run:function(){ setVisible(T,false); select(null); }}
+        : {icon:'eye', label:'Show', key:'H', run:function(){ setVisible(T,true); }});
+      items.push(allTr ? {icon:'solid',  label:'Make solid',       key:'T', run:function(){ setTransparent(T,false); }}
+                       : {icon:'transp', label:'Make transparent', key:'T', run:function(){ setTransparent(T,true); }});
+      items.push({icon:'isolate', label:'Hide others', key:'I', run:function(){ isolate(T); }});
+      items.push({icon:'fit', label: multi ? 'Zoom to selection' : 'Zoom to part', key:'F', run:function(){ fitTo(T); }});
       if(EX.on){
-        var asm=assemblyOf(node);
+        var asms=[]; T.forEach(function(n){ var a=assemblyOf(n); if(a && asms.indexOf(a)<0) asms.push(a); });
+        var pinned=T.every(function(n){ return !!n.userData._pinned; }), rigid=asms.length && asms.every(function(a){ return !!a.userData._rigid; });
         items.push({sep:true}, {section:'Exploded view', icon:'explode'});
-        items.push({check:true, on:!!node.userData._pinned, label:'Stay in place',
+        items.push({check:true, on:pinned, label:'Stay in place',
                     hint:'Does not move; its sub-parts may still spread',
-                    run:function(){ setExFlag(node,'_pinned',!node.userData._pinned); }});
-        if(asm) items.push({check:true, on:!!asm.userData._rigid,
-                    label: asm===node ? 'Keep together' : 'Keep together: '+labelFor(asm),
+                    run:function(){ setExFlag(T,'_pinned',!pinned); }});
+        if(asms.length) items.push({check:true, on:rigid,
+                    label: asms.length>1 ? 'Keep together ('+asms.length+' assemblies)'
+                         : asms[0]===node ? 'Keep together' : 'Keep together: '+labelFor(asms[0]),
                     hint:'Does not come apart; moves as one block',
-                    run:function(){ setExFlag(asm,'_rigid',!asm.userData._rigid); }});
+                    run:function(){ setExFlag(asms,'_rigid',!rigid); }});
       }
       items.push({sep:true});
     }
@@ -1139,7 +1181,9 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   var canvas=renderer.domElement;
   canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   canvas.addEventListener('pointerdown', function(e){
-    down={x:e.clientX, y:e.clientY, t:Date.now(), menu:(e.button===2 || (e.button===0 && e.ctrlKey)), multi:!!down};
+    down={x:e.clientX, y:e.clientY, t:Date.now(), multi:!!down,
+          menu:(e.button===2 || (e.button===0 && e.ctrlKey && IS_MAC)),    // macOS: Ctrl-click = right-click
+          add:(IS_MAC ? e.metaKey : e.ctrlKey)};                          // Cmd (Mac) / Ctrl: add to selection
     fadeHud();
   });
   canvas.addEventListener('pointerup', function(e){
@@ -1147,14 +1191,15 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     if(d.multi || suppressClick()) return;
     var still=Math.abs(e.clientX-d.x)<6 && Math.abs(e.clientY-d.y)<6;
     if(!still) return;
-    if(d.menu){ var p=hitPart(e.clientX,e.clientY); if(p) select(p); openMenu(p, e.clientX, e.clientY); return; }
+    if(d.menu){ var p=hitPart(e.clientX,e.clientY); if(p) menuTargetFor(p); openMenu(p, e.clientX, e.clientY); return; }
     if(e.button===0 && (Date.now()-d.t)<400){
       if(MS.on) msPick(e.clientX,e.clientY);
+      else if(d.add){ var hp=hitPart(e.clientX,e.clientY); if(hp) toggleSelect(hp); }
       else select(hitPart(e.clientX,e.clientY));      // empty space clears selection
     }
   });
   canvas.addEventListener('pointercancel', function(){ down=null; });
-  attachLongPress(canvas, function(x,y){ down=null; var p=hitPart(x,y); if(p) select(p); openMenu(p, x, y, true); });
+  attachLongPress(canvas, function(x,y){ down=null; var p=hitPart(x,y); if(p) menuTargetFor(p); openMenu(p, x, y, true); });
 
   // ---------- measure (mesh based) ----------
   // The exporter gives every CAD face its own vertices, so walking triangles that share vertex indices stays
@@ -1423,15 +1468,15 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     if(e.metaKey || e.ctrlKey || e.altKey) return;
     var k=e.key.toLowerCase();
     if(k==='escape'){ if(ctx.classList.contains('open')) closeMenu(); else select(null); return; }
-    if(k==='f'){ fitTo(selected||root); }
+    if(k==='f'){ fitTo(selection.length ? selection : root); }
     else if(k==='a'){ showAll(); }
     else if(k==='e'){ toggleEdges(); }
     else if(k==='x'){ setExplode(!EX.on); }
     else if(k==='l'){ toggleLightsPanel(); }
     else if(k==='m'){ setMeasure(!MS.on); }
-    else if(k==='i' && selected){ isolate(selected); }
-    else if(k==='h' && selected){ var s=selected; if(shownInScene(s)){ setVisible(s,false); select(null); } else showNode(s); }
-    else if(k==='t' && selected){ setTransparent(selected, !isTransparent(selected)); }
+    else if(k==='i' && selection.length){ isolate(selection); }
+    else if(k==='h' && selection.length){ var s=selection.slice(); if(s.some(shownInScene)){ setVisible(s,false); select(null); } else setVisible(s,true); }
+    else if(k==='t' && selection.length){ setTransparent(selection, !selection.every(isTransparent)); }
     else return;
     closeMenu(); e.preventDefault();
   });
@@ -1470,15 +1515,16 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
       for(var i=0;i<tops.length;i++) frag.appendChild(makeRow(tops[i],0));
       treeEl.appendChild(frag);
       if(tops.length===1){ var r0=tops[0].userData._rec; if(r0) r0.setOpen(true); }   // single root assembly: show its contents
-      $('part-count').textContent=(nParts||flatIndex.length)+' '+((nParts||flatIndex.length)===1?'part':'parts');
+      PART_COUNT_TEXT=(nParts||flatIndex.length)+' '+((nParts||flatIndex.length)===1?'part':'parts');
+      $('part-count').textContent=PART_COUNT_TEXT;
       var s=$('spinner'); if(s) s.style.display='none';
       invalidate();
     }, function(e){ fail((e&&e.message)?e.message:'parse error'); });
   }catch(e){ fail(e.message||String(e)); }
 
   // ---------- buttons ----------
-  $('btn-fit').onclick=function(){ fitTo(selected||root); };
-  $('btn-isolate').onclick=function(){ isolate(selected); };
+  $('btn-fit').onclick=function(){ fitTo(selection.length ? selection : root); };
+  $('btn-isolate').onclick=function(){ isolate(selection); };
   $('btn-showall').onclick=showAll;
   $('btn-edges').onclick=toggleEdges;
   $('btn-close').onclick=function(){ $('panel').classList.add('closed'); };

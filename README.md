@@ -28,6 +28,10 @@ hundred MB, downloaded once). Later runs reuse it.
 ### Viewer controls
 - **Rotate**: drag (one finger on touch) · **Pan**: right-drag / two-finger drag · **Zoom**: scroll / pinch
 - **Tap/click a part** in the 3D view to select + highlight it (and reveal it in the tree)
+- **Multi-select**: in the tree, Shift-click selects a range and Cmd-click (Mac) / Ctrl-click (Windows,
+  Linux) adds or removes a part; in the 3D view Cmd/Ctrl-click adds or removes (on a Mac Ctrl-click stays
+  the right-click menu). Right-click inside the selection, Isolate, Fit and the H/T/I/F keys act on all
+  selected parts
 - **Right-click** a part (or **long-press** on touch), in the 3D view or in the tree, for a menu:
   Hide · Make transparent / solid · Hide others · Zoom to part · Show all (· Make all solid)
 - **View cube** (top right): click a face, edge or corner to snap to that view (26 views); drag it to
