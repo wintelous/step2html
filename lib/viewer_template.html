@@ -148,6 +148,7 @@
   .pop-head .icon-btn { width: 26px; height: 26px; }
   .link-btn { background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 12px; padding: 4px 6px; border-radius: 6px; }
   .link-btn:hover { background: var(--hover); }
+  .link-btn:disabled { opacity: .4; cursor: default; background: none; }
   .pop-row { display: flex; align-items: center; gap: 10px; min-height: 32px; }
   .pop-row > label { width: 84px; color: var(--text-2); flex: none; }
   .pop-row > .val { width: 52px; text-align: right; color: var(--text-2); font-variant-numeric: tabular-nums; flex: none; }
@@ -173,6 +174,30 @@
   input[type=range]:focus-visible { outline: none; }
   input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent-soft); }
   input.kelvin { --track: linear-gradient(90deg, #ffa257, #ffd2a1 30%, #fff1e0 55%, #f3f5ff 75%, #c9d9ff); }
+
+  /* ---------- measure ---------- */
+  .ms-hint { color: var(--text-2); font-size: 12px; margin: -2px 0 8px; min-height: 16px; }
+  #ms-list { max-height: 172px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+             scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+  #ms-list .note { padding: 4px 2px; }
+  .ms-row { display: grid; grid-template-columns: 20px auto 1fr 26px; align-items: center; column-gap: 8px;
+            padding: 5px 4px 5px 6px; border-radius: 8px; background: var(--surface-2); }
+  .ms-n { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px;
+          font-weight: 600; background: var(--ms-color); color: #1b1f24; }
+  .ms-k { color: var(--text-2); }
+  .ms-v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .ms-d { grid-column: 2 / 4; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .ms-row .icon-btn { width: 24px; height: 24px; }
+  .ms-row .icon-btn svg { width: 13px; height: 13px; }
+  #ms-tags { position: absolute; inset: 0; pointer-events: none; z-index: 12; overflow: hidden; }
+  .ms-tag { position: absolute; left: 0; top: 0; padding: 2px 7px 2px 3px; border-radius: 999px; white-space: nowrap;
+            font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text);
+            background: var(--surface-solid); border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+            display: flex; align-items: center; gap: 5px; }
+  .ms-tag .ms-n { width: 16px; height: 16px; font-size: 10px; }
+  .ms-tag.hot { outline: 2px solid var(--ms-color); }
+  :root { --ms-color: #f5a524; }
+  #viewer.measuring canvas { cursor: crosshair; }
 
   /* ---------- context menu ---------- */
   #ctx { position: fixed; z-index: 50; min-width: 210px; max-width: 280px; padding: 5px; border-radius: 10px;
@@ -217,7 +242,7 @@
     .row { height: 40px; } .label { padding: 11px 0; }
     .eye { width: 38px; height: 36px; } .eye svg { width: 18px; height: 18px; }
     .twisty { width: 28px; } .twisty svg { width: 14px; height: 14px; }
-    .tbtn { padding: 10px; } .tbtn .lbl { display: none; }
+    .tbtn { padding: 9px 8px; } .tbtn .lbl { display: none; }
     #toolbar { gap: 0; }
     #viewcube { width: 92px; height: 92px; top: calc(var(--gap) + 52px); }
     .pop-row > label { width: 76px; }
@@ -252,6 +277,8 @@
       <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
       <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3 3H7l3-3z"/><path d="M12 12v8"/></symbol>
+      <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M3.5 16.5l13-13 4 4-13 13z"/><path d="M7.5 12.5l2 2M10.5 9.5l2 2M13.5 6.5l2 2"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
       <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></symbol>
       <symbol id="i-solid" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.5" fill="currentColor" fill-opacity=".25"/></symbol>
     </defs>
@@ -277,6 +304,7 @@
     <button id="btn-showall" class="tbtn" title="Show all parts (A)"><svg class="i"><use href="#i-showall"/></svg><span class="lbl">Show all</span></button>
     <button id="btn-edges" class="tbtn" title="Toggle edges (E)"><svg class="i"><use href="#i-edges"/></svg><span class="lbl">Edges</span></button>
     <button id="btn-explode" class="tbtn" title="Exploded view (X)"><svg class="i"><use href="#i-explode"/></svg><span class="lbl">Explode</span></button>
+    <button id="btn-measure" class="tbtn" title="Measure (M)"><svg class="i"><use href="#i-ruler"/></svg><span class="lbl">Measure</span></button>
     <button id="btn-lights" class="tbtn" title="Lighting (L)"><svg class="i"><use href="#i-bulb"/></svg><span class="lbl">Lights</span></button>
     <span class="tsep"></span>
     <button id="theme-btn" class="tbtn" title="Switch light / dark"><svg class="i sun"><use href="#i-sun"/></svg><svg class="i moon"><use href="#i-moon"/></svg></button>
@@ -288,7 +316,16 @@
     <button id="vc-home" class="icon-btn glass" title="Home view"><svg class="i"><use href="#i-home"/></svg></button>
   </div>
 
+  <div id="ms-tags"></div>
+
   <div id="dock">
+    <div id="pop-measure" class="pop glass" hidden>
+      <div class="pop-head"><svg class="i"><use href="#i-ruler"/></svg><span class="grow">Measure</span>
+        <button id="ms-clear" class="link-btn">Clear</button>
+        <button id="ms-close" class="icon-btn" title="Close (M)"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="ms-hint" id="ms-hint"></div>
+      <div id="ms-list"></div>
+    </div>
     <div id="pop-explode" class="pop glass" hidden>
       <div class="pop-head"><svg class="i"><use href="#i-explode"/></svg><span class="grow">Exploded view</span>
         <button id="ex-close" class="icon-btn" title="Collapse (X)"><svg class="i"><use href="#i-x"/></svg></button></div>
@@ -834,6 +871,8 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     if(!root) return;
     EX.on=on; $('pop-explode').hidden=!on; $('btn-explode').classList.toggle('active', on);
     document.body.classList.toggle('exploding', on);
+    if(on && MS.on) setMeasure(false);
+    MS.group.visible=!on;             // measurements belong to the assembled model
     if(on){ fadeHud(); if(!EX.moves.length) exCompute(); }
     exAnimateTo(exTarget());
   }
@@ -1028,7 +1067,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
 
   // ---------- picking ----------
   var ray=new THREE.Raycaster(), ndc=new THREE.Vector2(), down=null;
-  function hitPart(x,y){            // first visible opaque part; transparent parts only if nothing else is hit
+  function rayHit(x,y){             // first visible opaque hit; a transparent one only if nothing else is hit
     if(!root) return null;
     var r=renderer.domElement.getBoundingClientRect();
     ndc.x=((x-r.left)/r.width)*2-1; ndc.y=-((y-r.top)/r.height)*2+1;
@@ -1037,11 +1076,12 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     for(var i=0;i<hits.length;i++){
       var o=hits[i].object;
       if(!o.isMesh || !shownInScene(o)) continue;
-      if(o.userData._transp){ if(!firstTransp) firstTransp=o; continue; }
-      return nearestPart(o);
+      if(o.userData._transp){ if(!firstTransp) firstTransp=hits[i]; continue; }
+      return hits[i];
     }
-    return firstTransp ? nearestPart(firstTransp) : null;
+    return firstTransp;
   }
+  function hitPart(x,y){ var h=rayHit(x,y); return h ? nearestPart(h.object) : null; }
   var canvas=renderer.domElement;
   canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   canvas.addEventListener('pointerdown', function(e){
@@ -1054,10 +1094,273 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     var still=Math.abs(e.clientX-d.x)<6 && Math.abs(e.clientY-d.y)<6;
     if(!still) return;
     if(d.menu){ var p=hitPart(e.clientX,e.clientY); if(p) select(p); openMenu(p, e.clientX, e.clientY); return; }
-    if(e.button===0 && (Date.now()-d.t)<400) select(hitPart(e.clientX,e.clientY));   // empty space clears selection
+    if(e.button===0 && (Date.now()-d.t)<400){
+      if(MS.on) msPick(e.clientX,e.clientY);
+      else select(hitPart(e.clientX,e.clientY));      // empty space clears selection
+    }
   });
   canvas.addEventListener('pointercancel', function(){ down=null; });
   attachLongPress(canvas, function(x,y){ down=null; var p=hitPart(x,y); if(p) select(p); openMenu(p, x, y, true); });
+
+  // ---------- measure (mesh based) ----------
+  // The exporter gives every CAD face its own vertices, so walking triangles that share vertex indices stays
+  // inside one CAD face: flat faces are exact; holes/cylinders are fitted through their mesh vertices (which lie
+  // on the true surface), so their diameter is close but shown as approximate. Model units are metres -> mm.
+  var MS={on:false, first:null, firstVis:null, items:[], n:0, hover:null, hoverKey:'', group:new THREE.Group()};
+  MS.group.renderOrder=30; scene.add(MS.group);
+  var MS_COLOR=new THREE.Color(0xf5a524), MS_SEL=new THREE.Color(0x4d8dff), SNAP_PX=10;
+  var msDot=(function(){ var c=document.createElement('canvas'); c.width=c.height=64; var g=c.getContext('2d');
+    g.beginPath(); g.arc(32,32,24,0,Math.PI*2); g.fillStyle='#fff'; g.fill(); g.lineWidth=8; g.strokeStyle='rgba(20,24,30,.85)'; g.stroke();
+    var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; return t; })();
+  function msPoints(pts, color, size){
+    var g=new THREE.BufferGeometry().setFromPoints(pts);
+    var m=new THREE.Points(g, new THREE.PointsMaterial({color:color, size:size||11, sizeAttenuation:false, map:msDot,
+      transparent:true, alphaTest:0.4, depthTest:false}));
+    m.renderOrder=32; return m;
+  }
+  function msLine(a, b, color, dashed){
+    var g=new THREE.BufferGeometry().setFromPoints([a,b]), len=a.distanceTo(b)||1;
+    var mat= dashed ? new THREE.LineDashedMaterial({color:color, dashSize:len/24, gapSize:len/36, depthTest:false, transparent:true})
+                    : new THREE.LineBasicMaterial({color:color, depthTest:false, transparent:true});
+    var l=new THREE.Line(g, mat); if(dashed) l.computeLineDistances(); l.renderOrder=31; return l;
+  }
+  function msRing(c, axis, r, color){
+    var u=new THREE.Vector3().copy(Math.abs(axis.x)<0.9 ? new THREE.Vector3(1,0,0) : new THREE.Vector3(0,1,0)).cross(axis).normalize();
+    var w=new THREE.Vector3().crossVectors(axis,u), pts=[];
+    for(var i=0;i<=64;i++){ var a=i/64*Math.PI*2; pts.push(c.clone().addScaledVector(u,Math.cos(a)*r).addScaledVector(w,Math.sin(a)*r)); }
+    var l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:color, depthTest:false, transparent:true}));
+    l.renderOrder=31; return {line:l, edge:c.clone().addScaledVector(u,r)};
+  }
+  function msOverlay(mesh, tris, color){      // translucent copy of a face's triangles, in world space
+    var geo=mesh.geometry, pos=geo.attributes.position, idx=geo.index, arr=new Float32Array(tris.length*9), v=new THREE.Vector3(), k=0;
+    for(var i=0;i<tris.length;i++) for(var j=0;j<3;j++){
+      var c=idx ? idx.getX(3*tris[i]+j) : 3*tris[i]+j; v.fromBufferAttribute(pos,c).applyMatrix4(mesh.matrixWorld);
+      arr[k++]=v.x; arr[k++]=v.y; arr[k++]=v.z; }
+    var g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(arr,3));
+    var m=new THREE.Mesh(g, new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:.45, side:THREE.DoubleSide,
+      depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-4}));
+    m.renderOrder=29; return m;
+  }
+  function msDispose(o){ if(!o) return; o.traverse(function(x){ if(x.geometry) x.geometry.dispose(); if(x.material) x.material.dispose(); });
+                          if(o.parent) o.parent.remove(o); }
+
+  // --- mesh topology helpers ---
+  function triAdj(geo){                // vertex -> triangles (CSR), cached on the geometry
+    if(geo.userData._adj) return geo.userData._adj;
+    var pos=geo.attributes.position, idx=geo.index, nc=idx ? idx.count : pos.count, nt=(nc/3)|0, vid, nv;
+    if(idx){ vid=idx.array; nv=pos.count; }
+    else { var map=new Map(); vid=new Uint32Array(nc); nv=0;          // non-indexed: weld identical positions
+      for(var i=0;i<nc;i++){ var key=Math.round(pos.getX(i)*1e7)+','+Math.round(pos.getY(i)*1e7)+','+Math.round(pos.getZ(i)*1e7);
+        var id=map.get(key); if(id===undefined){ id=nv++; map.set(key,id); } vid[i]=id; } }
+    var off=new Uint32Array(nv+1); for(var c=0;c<nt*3;c++) off[vid[c]+1]++;
+    for(var v=0;v<nv;v++) off[v+1]+=off[v];
+    var fill=off.slice(0,nv), list=new Uint32Array(nt*3);
+    for(var c2=0;c2<nt*3;c2++) list[fill[vid[c2]]++]=(c2/3)|0;
+    return geo.userData._adj={vid:vid, off:off, list:list, nt:nt};
+  }
+  var _ta=new THREE.Vector3(), _tb=new THREE.Vector3(), _tc=new THREE.Vector3();
+  function triLocal(geo, t, a, b, c){
+    var pos=geo.attributes.position, idx=geo.index;
+    a.fromBufferAttribute(pos, idx ? idx.getX(3*t) : 3*t);
+    b.fromBufferAttribute(pos, idx ? idx.getX(3*t+1) : 3*t+1);
+    c.fromBufferAttribute(pos, idx ? idx.getX(3*t+2) : 3*t+2);
+  }
+  function triNormal(geo, t, out){ triLocal(geo,t,_ta,_tb,_tc);
+    return out.subVectors(_tc,_tb).cross(_ta.clone().sub(_tb)).normalize(); }    // = (b-a)x(c-a)
+  function flood(geo, seed, accept, cap){
+    var A=triAdj(geo), seen=new Uint8Array(A.nt), out=[seed], stack=[seed]; seen[seed]=1;
+    while(stack.length && out.length<cap){
+      var t=stack.pop();
+      for(var k=0;k<3;k++){ var v=A.vid[3*t+k];
+        for(var j=A.off[v]; j<A.off[v+1]; j++){ var u=A.list[j]; if(seen[u]) continue; seen[u]=1;
+          if(accept(u,t)){ out.push(u); stack.push(u); } } }
+    }
+    return out;
+  }
+
+  // --- what is under the cursor: corner (vertex), flat face, hole/cylinder, or a plain surface point ---
+  function msEntityAt(x,y){
+    var hit=rayHit(x,y); if(!hit || hit.faceIndex==null) return null;
+    var mesh=hit.object, geo=mesh.geometry, t=hit.faceIndex, mw=mesh.matrixWorld;
+    var r=canvas.getBoundingClientRect(), best=null, bd=SNAP_PX;
+    triLocal(geo,t,_ta,_tb,_tc);
+    [_ta,_tb,_tc].forEach(function(v){ var w=v.clone().applyMatrix4(mw), s=w.clone().project(camera);
+      var d=Math.hypot((s.x+1)/2*r.width+r.left-x, (1-s.y)/2*r.height+r.top-y); if(d<bd){ bd=d; best=w; } });
+    if(best) return {type:'point', p:best, corner:true, mesh:mesh};
+
+    var key=mesh.uuid+':'+t;
+    if(MS.cache && MS.cache.mesh===mesh && MS.cache.set.has(t)){             // same face as last time
+      var e0=MS.cache.ent; if(e0.type==='face') return Object.assign({}, e0, {q:hit.point.clone()});
+      if(e0.type==='cyl') return e0;
+    }
+    var n0=triNormal(geo,t,new THREE.Vector3()); if(!isFinite(n0.x)) return {type:'point', p:hit.point.clone(), mesh:mesh};
+    triLocal(geo,t,_ta,_tb,_tc); var a0=_ta.clone(), nn=new THREE.Vector3(), tol=5e-6;
+    var planar=flood(geo, t, function(u){ var n=triNormal(geo,u,nn); if(!(n.dot(n0)>0.99995)) return false;
+                                           triLocal(geo,u,_ta,_tb,_tc); return Math.abs(_ta.sub(a0).dot(n0))<tol; }, 200000);
+    var smooth=flood(geo, t, function(u,from){ var nu=triNormal(geo,u,nn).clone(), nf=triNormal(geo,from,new THREE.Vector3());
+                                               return nu.dot(nf)>0.6; }, 60000);
+    var ent=null;
+    if(smooth.length > planar.length*1.5) ent=msFitCylinder(mesh, smooth);
+    if(!ent && smooth.length <= planar.length*1.5){
+      var nW=n0.clone().transformDirection(mw);
+      ent={type:'face', n:nW, q:hit.point.clone(), mesh:mesh, tris:planar};
+    }
+    if(!ent) return {type:'point', p:hit.point.clone(), mesh:mesh};
+    MS.cache={mesh:mesh, set:new Set(ent.tris), ent:ent};
+    return ent;
+  }
+  function msFitCylinder(mesh, tris){
+    var geo=mesh.geometry, mw=mesh.matrixWorld, normals=[], n=new THREE.Vector3();
+    for(var i=0;i<tris.length;i++){ triNormal(geo,tris[i],n); if(isFinite(n.x)) normals.push(n.clone().transformDirection(mw)); }
+    if(normals.length<4) return null;
+    var n0=normals[0], nb=null, bm=0;
+    normals.forEach(function(m){ var c=new THREE.Vector3().crossVectors(n0,m).length(); if(c>bm){ bm=c; nb=m; } });
+    if(bm<0.2) return null;                                        // barely curved
+    var axis=new THREE.Vector3().crossVectors(n0,nb).normalize();
+    for(var j=0;j<normals.length;j++) if(Math.abs(normals[j].dot(axis))>0.05) return null;   // not a cylinder (cone, fillet...)
+    var u=(Math.abs(axis.x)<0.9 ? new THREE.Vector3(1,0,0) : new THREE.Vector3(0,1,0)).cross(axis).normalize();
+    var w=new THREE.Vector3().crossVectors(axis,u), pts=[], along=[], v=new THREE.Vector3();
+    var pos=geo.attributes.position, idx=geo.index, used=new Set();
+    tris.forEach(function(t){ for(var k=0;k<3;k++){ var c=idx ? idx.getX(3*t+k) : 3*t+k; if(used.has(c)) continue; used.add(c);
+      v.fromBufferAttribute(pos,c).applyMatrix4(mw); pts.push([v.dot(u), v.dot(w)]); along.push(v.dot(axis)); } });
+    if(pts.length<6) return null;
+    // algebraic circle fit (Kasa): x^2+y^2 + D x + E y + F = 0, solved in centred coordinates
+    var mx=0,my=0; pts.forEach(function(p){ mx+=p[0]; my+=p[1]; }); mx/=pts.length; my/=pts.length;
+    var Sxx=0,Sxy=0,Syy=0,Sxz=0,Syz=0,Sx=0,Sy=0,Sz=0,N=pts.length;
+    pts.forEach(function(p){ var X=p[0]-mx, Y=p[1]-my, Z=X*X+Y*Y; Sxx+=X*X; Sxy+=X*Y; Syy+=Y*Y; Sxz+=X*Z; Syz+=Y*Z; Sx+=X; Sy+=Y; Sz+=Z; });
+    var M=[[Sxx,Sxy,Sx],[Sxy,Syy,Sy],[Sx,Sy,N]], B=[-Sxz,-Syz,-Sz], s=solve3(M,B); if(!s) return null;
+    var cx=-s[0]/2, cy=-s[1]/2, rr=cx*cx+cy*cy-s[2]; if(!(rr>0)) return null;
+    var R=Math.sqrt(rr), err=0; pts.forEach(function(p){ var d=Math.hypot(p[0]-mx-cx, p[1]-my-cy)-R; err+=d*d; });
+    err=Math.sqrt(err/N); if(err>Math.max(0.01*R, 2e-5) || R>0.5) return null;
+    var amid=along.reduce(function(a,b){ return a+b; },0)/along.length;
+    var c=new THREE.Vector3().addScaledVector(u,cx+mx).addScaledVector(w,cy+my).addScaledVector(axis,amid);
+    return {type:'cyl', c:c, axis:axis, r:R, mesh:mesh, tris:tris};
+  }
+  function solve3(M,B){               // Cramer's rule
+    function det(m){ return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]); }
+    var d=det(M); if(Math.abs(d)<1e-30) return null;
+    return [0,1,2].map(function(i){ var m=M.map(function(row,r){ return row.map(function(v,c){ return c===i ? B[r] : v; }); }); return det(m)/d; });
+  }
+
+  // --- results ---
+  function mm(v){ var a=Math.abs(v*1000); return (a>=100 ? a.toFixed(1) : a.toFixed(2))+' mm'; }
+  function deg(rad){ return (rad*180/Math.PI).toFixed(1)+'°'; }
+  function cadDelta(a,b){ var d=b.clone().sub(a);    // glTF (Y-up) -> CAD (Z-up): X=x, Y=-z, Z=y
+    return 'ΔX '+mm(d.x)+' · ΔY '+mm(-d.z)+' · ΔZ '+mm(d.y); }
+  function entName(e){ return e.type==='face' ? 'flat face' : e.type==='cyl' ? 'hole/cylinder' : e.corner ? 'corner' : 'point'; }
+  function msPair(a,b){
+    var order={point:0, face:1, cyl:2}; if(order[a.type]>order[b.type]){ var t=a; a=b; b=t; }
+    var A=a.type, B=b.type, PAR=0.99996;
+    if(A==='point' && B==='point') return {k:'Distance', v:mm(a.p.distanceTo(b.p)), d:cadDelta(a.p,b.p), p1:a.p, p2:b.p};
+    if(A==='point' && B==='face'){ var s=a.p.clone().sub(b.q).dot(b.n), f=a.p.clone().addScaledVector(b.n,-s);
+      return {k:'Distance', v:mm(s), d:'perpendicular, point to face', p1:a.p, p2:f}; }
+    if(A==='point' && B==='cyl'){ var v=a.p.clone().sub(b.c), foot=b.c.clone().addScaledVector(b.axis, v.dot(b.axis)), dd=a.p.distanceTo(foot);
+      return {k:'Distance', v:mm(dd), d:'point to axis · to surface ≈ '+mm(Math.abs(dd-b.r)), p1:a.p, p2:foot}; }
+    if(A==='face' && B==='face'){ var cs=Math.abs(a.n.dot(b.n));
+      if(cs>PAR){ var s2=b.q.clone().sub(a.q).dot(a.n); return {k:'Distance', v:mm(s2), d:'between parallel faces', p1:b.q, p2:b.q.clone().addScaledVector(a.n,-s2)}; }
+      return {k:'Angle', v:deg(Math.acos(Math.min(1,cs))), d:'between faces', p1:a.q, p2:b.q, dashed:true}; }
+    if(A==='face' && B==='cyl'){ var sn=Math.abs(b.axis.dot(a.n));
+      if(sn<0.009){ var s3=b.c.clone().sub(a.q).dot(a.n); return {k:'Distance', v:mm(s3), d:'axis to face · surface to face ≈ '+mm(Math.abs(s3)-b.r), p1:b.c, p2:b.c.clone().addScaledVector(a.n,-s3)}; }
+      return {k:'Angle', v:deg(Math.asin(Math.min(1,sn))), d:'between axis and face', p1:b.c, p2:a.q, dashed:true}; }
+    if(A==='cyl' && B==='cyl'){ var ca=Math.abs(a.axis.dot(b.axis));
+      if(ca>PAR){ var w=b.c.clone().sub(a.c), q=a.c.clone().addScaledVector(a.axis, w.dot(a.axis)), d3=q.distanceTo(b.c);
+        return {k:'Distance', v:mm(d3), d:'axis to axis · wall to wall ≈ '+mm(d3-a.r-b.r), p1:q, p2:b.c}; }
+      return {k:'Angle', v:deg(Math.acos(Math.min(1,ca))), d:'between axes', p1:a.c, p2:b.c, dashed:true}; }
+    return null;
+  }
+  function msAdd(res){
+    var g=new THREE.Group(), anchor;
+    if(res.ring){ var ring=msRing(res.c, res.axis, res.r, MS_COLOR); g.add(ring.line); g.add(msPoints([res.c], MS_COLOR, 7)); anchor=ring.edge; }
+    else { g.add(msLine(res.p1, res.p2, MS_COLOR, res.dashed)); g.add(msPoints([res.p1,res.p2], MS_COLOR));
+           anchor=res.p1.clone().add(res.p2).multiplyScalar(0.5); }
+    MS.group.add(g);
+    var n=++MS.n, tag=document.createElement('div'); tag.className='ms-tag';
+    tag.innerHTML='<span class="ms-n">'+n+'</span><span></span>'; tag.lastChild.textContent=res.v; $('ms-tags').appendChild(tag);
+    var item={n:n, res:res, obj:g, tag:tag, anchor:anchor}; MS.items.push(item);
+    msList(); msTags(); invalidate();
+  }
+  function msRemove(item){ msDispose(item.obj); item.tag.remove(); MS.items.splice(MS.items.indexOf(item),1); msList(); invalidate(); }
+  function msClear(){ MS.items.slice().forEach(msRemove); MS.n=0; msCancelFirst(); }
+  function msList(){
+    var el=$('ms-list'); el.innerHTML='';
+    if(!MS.items.length){ var d=document.createElement('div'); d.className='note'; d.textContent='No measurements yet.'; el.appendChild(d); }
+    MS.items.slice().reverse().forEach(function(it){
+      var row=document.createElement('div'); row.className='ms-row';
+      row.innerHTML='<span class="ms-n"></span><span class="ms-k"></span><span class="ms-v"></span>'+
+                    '<button class="icon-btn" title="Remove">'+icon('x')+'</button><span class="ms-d"></span>';
+      row.children[0].textContent=it.n; row.children[1].textContent=it.res.k; row.children[2].textContent=it.res.v;
+      row.children[4].textContent=it.res.d||'';
+      row.children[3].onclick=function(){ msRemove(it); };
+      row.onmouseenter=function(){ it.tag.classList.add('hot'); }; row.onmouseleave=function(){ it.tag.classList.remove('hot'); };
+      el.appendChild(row);
+    });
+    $('ms-clear').disabled=!MS.items.length;
+  }
+  function msTags(){                  // keep the 3D labels glued to their anchors (called after each render)
+    var r=container.getBoundingClientRect(), show=MS.group.visible, v=new THREE.Vector3(), placed=[];
+    MS.items.forEach(function(it){
+      v.copy(it.anchor).project(camera);
+      var off=!show || v.z>1 || v.z<-1;
+      it.tag.style.display=off ? 'none' : '';
+      if(off) return;
+      var w=it.tag.offsetWidth, hh=it.tag.offsetHeight, x=(v.x+1)/2*r.width-w/2, y=(1-v.y)/2*r.height-hh-6;
+      for(var guard=0; guard<20; guard++){            // nudge upwards until it doesn't overlap an earlier label
+        var hit=placed.find(function(p){ return x<p.x+p.w+2 && x+w+2>p.x && y<p.y+p.h+2 && y+hh+2>p.y; });
+        if(!hit) break; y=hit.y-hh-3;
+      }
+      placed.push({x:x, y:y, w:w, h:hh});
+      it.tag.style.transform='translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)';
+    });
+  }
+
+  // --- interaction ---
+  function msHint(){
+    var t;
+    if(!MS.first) t='Click a corner, flat face or hole. Then a second one to measure between them.';
+    else t='First: '+entName(MS.first)+(MS.first.type==='cyl' ? ' (Ø ≈ '+mm(2*MS.first.r)+')' : '')+' — now pick the second item, or empty space to cancel.';
+    $('ms-hint').textContent=t;
+  }
+  function msVisual(e, color){
+    if(e.type==='point') return msPoints([e.p], color, 12);
+    var g=new THREE.Group(); g.add(msOverlay(e.mesh, e.tris, color));
+    if(e.type==='cyl') g.add(msRing(e.c, e.axis, e.r, color).line);
+    return g;
+  }
+  function msCancelFirst(){ MS.first=null; msDispose(MS.firstVis); MS.firstVis=null; msHint(); invalidate(); }
+  function msPick(x,y){
+    var e=msEntityAt(x,y);
+    if(!e){ msCancelFirst(); return; }
+    if(e.type==='cyl') msAdd({k:'Diameter', v:'Ø ≈ '+mm(2*e.r), d:'fitted through the mesh of the hole/cylinder', ring:true, c:e.c, axis:e.axis, r:e.r});
+    if(!MS.first){ MS.first=e; MS.firstVis=msVisual(e, MS_SEL); MS.group.add(MS.firstVis); msHint(); invalidate(); return; }
+    var res=msPair(MS.first, e); if(res) msAdd(res);
+    msCancelFirst();
+  }
+  function msSetHover(e){
+    var key=!e ? '' : e.type==='point' ? 'p'+e.p.x+','+e.p.y+','+e.p.z : e.mesh.uuid+':'+e.type+':'+e.tris[0];
+    if(key===MS.hoverKey) return;
+    MS.hoverKey=key; msDispose(MS.hover); MS.hover=null;
+    if(e){ MS.hover=msVisual(e, MS_COLOR); MS.group.add(MS.hover); }
+    invalidate();
+  }
+  var msHoverQueued=null;
+  canvas.addEventListener('pointermove', function(e){
+    if(!MS.on || e.pointerType!=='mouse' || e.buttons){ return; }
+    var x=e.clientX, y=e.clientY;
+    if(msHoverQueued===null) requestAnimationFrame(function(){ var q=msHoverQueued; msHoverQueued=null; if(MS.on && q) msSetHover(msEntityAt(q[0],q[1])); });
+    msHoverQueued=[x,y];
+  });
+  canvas.addEventListener('pointerleave', function(){ if(MS.on) msSetHover(null); });
+  function setMeasure(on){
+    if(!root) return;
+    MS.on=on; $('pop-measure').hidden=!on; $('btn-measure').classList.toggle('active', on);
+    container.classList.toggle('measuring', on);
+    if(on){ if(EX.on) setExplode(false); select(null); fadeHud(); msHint(); msList(); }
+    else { msCancelFirst(); msSetHover(null); }
+    invalidate();
+  }
+  $('btn-measure').onclick=function(){ setMeasure(!MS.on); };
+  $('ms-close').onclick=function(){ setMeasure(false); };
+  $('ms-clear').onclick=function(){ msClear(); };
 
   // ---------- keyboard ----------
   document.addEventListener('keydown', function(e){
@@ -1071,6 +1374,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     else if(k==='e'){ toggleEdges(); }
     else if(k==='x'){ setExplode(!EX.on); }
     else if(k==='l'){ toggleLightsPanel(); }
+    else if(k==='m'){ setMeasure(!MS.on); }
     else if(k==='i' && selected){ isolate(selected); }
     else if(k==='h' && selected){ var s=selected; setVisible(s,false); select(null); }
     else if(k==='t' && selected){ setTransparent(selected, !isTransparent(selected)); }
@@ -1137,7 +1441,8 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   // render only when something changed (saves battery; keeps 96k-object scenes smooth)
   (function animate(now){ requestAnimationFrame(animate); now=now||performance.now();
     stepExplode(now); if(!stepTween(now)) controls.update();
-    if(needsRender){ needsRender=false; renderer.render(scene,camera); if(viewCube) viewCube.render(); } })();
+    if(needsRender){ needsRender=false; renderer.render(scene,camera); if(viewCube) viewCube.render();
+                     if(MS.items.length) msTags(); } })();
 })();
 </script>
 </body>

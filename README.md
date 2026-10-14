@@ -39,6 +39,12 @@ hundred MB, downloaded once). Later runs reuse it.
   and the rest spreads out around it)
   and *Keep together* (its assembly doesn't come apart, e.g. a PCB with its components; from the 3D
   view this applies to the part's parent assembly). Flagged rows get a small marker in the tree
+- **Measure** (toolbar): click two items to measure between them: corners (snaps to mesh vertices), flat
+  faces and holes/cylinders. Gives point/face/axis distances with ΔX/ΔY/ΔZ (in the CAD's axes), angles
+  between faces/axes, and the diameter of any hole or cylinder you click. Results are listed in the panel
+  (remove one with ×, or *Clear* all) and labelled in the 3D view; hover a row to find its label.
+  Values are in mm. Flat faces and corners are exact; hole diameters are fitted through the mesh
+  (shown as ≈). Measurements belong to the assembled model and are hidden while exploded
 - **Lights** (toolbar): presets (Studio, Headlight, Soft, Dramatic) with colour-temperature
   (2700–8000 K) and brightness sliders; the choice is remembered
 - **Parts panel** (left; *Parts* button to open on phones): filter box, expand/collapse tree, eye icon to
@@ -46,7 +52,7 @@ hundred MB, downloaded once). Later runs reuse it.
 - **Toolbar**: Fit · Isolate (show only the selection) · Show all · Edges · light/dark theme
   (the theme follows the OS setting until toggled, then is remembered)
 - **Keyboard**: `F` fit · `H` hide · `T` transparent · `I` isolate · `A` show all · `E` edges · `X` explode ·
-  `L` lights · `Esc` deselect
+  `M` measure · `L` lights · `Esc` deselect
 
 ### Options
 
