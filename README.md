@@ -148,3 +148,12 @@ lib/
 - macOS or Linux with a `pip`-installable `cadquery-ocp` wheel (current macOS/Linux,
   x86-64 and Apple Silicon)
 - Internet access on the **first run only**, to install the dependency
+
+## License
+
+step2html is released under the [MIT License](LICENSE).
+
+It builds on third-party components under their own licenses: three.js with its OrbitControls and
+GLTFLoader (MIT; embedded in every generated viewer), cadquery-ocp (Apache-2.0) and OpenCASCADE
+(LGPL-2.1 with exception) for the converter, and, in the desktop app packages, Qt/PySide6 (LGPL-3.0),
+VTK (BSD-3-Clause) and Python (PSF License).
