@@ -203,6 +203,10 @@ def main(argv=None):
                     help="also write the intermediate .glb to PATH")
     ap.add_argument("--version", action="version", version="%(prog)s " + __version__)
     args = ap.parse_args(argv)
+    try:                                        # never crash on a path the console code page can't show
+        sys.stderr.reconfigure(errors="backslashreplace")
+    except (AttributeError, ValueError):
+        pass
 
     inp = args.input
     if not os.path.isfile(inp):

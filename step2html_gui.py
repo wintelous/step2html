@@ -21,7 +21,7 @@ if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "--convert-cl
     step2html.main(sys.argv[2:])
     sys.exit(0)
 
-from PySide6.QtCore import QEvent, QPointF, QProcess, QRectF, QSize, Qt, QTimer, QUrl
+from PySide6.QtCore import QEvent, QPointF, QProcess, QProcessEnvironment, QRectF, QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (QBrush, QColor, QDesktopServices, QFont, QIcon, QLinearGradient, QPainter,
                            QPainterPath, QPen, QPixmap, QPolygonF, QGuiApplication)
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QFileDialog, QFrame, QGridLayout,
@@ -239,7 +239,7 @@ class Window(QWidget):
         # actions
         act = QHBoxLayout(); act.setSpacing(8)
         self.open_btn = QPushButton("Open viewer"); self.open_btn.setObjectName("secondary"); self.open_btn.hide()
-        self.reveal_btn = QPushButton("Show in Finder" if sys.platform == "darwin" else "Show in folder")
+        self.reveal_btn = QPushButton({"darwin": "Show in Finder", "win32": "Show in Explorer"}.get(sys.platform, "Show in folder"))
         self.reveal_btn.setObjectName("secondary"); self.reveal_btn.hide()
         self.open_btn.clicked.connect(lambda: self.open_path(self.output))
         self.reveal_btn.clicked.connect(lambda: self.reveal(self.output))
@@ -372,6 +372,8 @@ class Window(QWidget):
         if title:
             args += ["--title", title]
         if getattr(sys, "frozen", False):
+            if sys.platform == "win32":                  # windowed apps have no console: use the CLI exe
+                return os.path.join(os.path.dirname(sys.executable), "step2html-cli.exe"), args
             return sys.executable, ["--convert-cli"] + args
         here = os.path.dirname(os.path.abspath(__file__))
         return sys.executable, [os.path.join(here, "step2html.py")] + args
@@ -390,6 +392,13 @@ class Window(QWidget):
                 return
         prog, args = self.converter_command()
         self.proc = QProcess(self)
+        env = QProcessEnvironment.systemEnvironment()
+        env.insert("PYTHONIOENCODING", "utf-8")          # non-ASCII paths/names survive any console code page
+        self.proc.setProcessEnvironment(env)
+        if sys.platform == "win32" and hasattr(self.proc, "setCreateProcessArgumentsModifier"):
+            def _no_console(a):                         # CREATE_NO_WINDOW: no console flashing up
+                a.flags |= 0x08000000
+            self.proc.setCreateProcessArgumentsModifier(_no_console)
         self.proc.setProcessChannelMode(QProcess.MergedChannels)
         self.proc.readyReadStandardOutput.connect(self._read)
         self.proc.finished.connect(self._finished)
@@ -479,6 +488,8 @@ class Window(QWidget):
             return
         if sys.platform == "darwin":
             subprocess.Popen(["open", "-R", path])
+        elif sys.platform == "win32":
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
         else:
             QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
 

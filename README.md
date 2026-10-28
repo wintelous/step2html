@@ -22,6 +22,8 @@ follows the system's light/dark mode and can open the result in the browser when
   a downloaded copy: right-click → Open, as it isn't notarized).
 - **Linux**: `.deb` for Debian/Ubuntu, `.pkg.tar.zst` for Arch; both also install the `step2html`
   command.
+- **Windows**: `Step2HTML-<version>-Setup.exe` (installer) or `Step2HTML-<version>-windows-x64.zip`
+  (portable). Unsigned, so SmartScreen asks once: **More info → Run anyway**.
 
 Everything is bundled (no Python setup needed). To build the packages yourself see
 [packaging/README.md](packaging/README.md). To run the app from source:

@@ -2,7 +2,7 @@
 """Render the app icon (same drawing as the window header) into PNGs, plus .icns on macOS.
 
 Usage: python packaging/make_icon.py <out-dir>
-Writes <out-dir>/step2html.png (512 px), <out-dir>/step2html-<size>.png and, on macOS,
+Writes <out-dir>/step2html.png (512 px), <out-dir>/step2html-<size>.png, <out-dir>/step2html.ico and, on macOS,
 <out-dir>/step2html.icns.
 """
 import os
@@ -35,6 +35,13 @@ def main():
     for sz in (16, 32, 48, 64, 128, 256, 512, 1024):
         render(sz, os.path.join(out, "step2html-%d.png" % sz))
     shutil.copy(os.path.join(out, "step2html-512.png"), os.path.join(out, "step2html.png"))
+    ico = os.path.join(out, "step2html.ico")               # Windows icon (all standard sizes in one file)
+    try:
+        from PIL import Image
+        Image.open(os.path.join(out, "step2html-1024.png")).save(
+            ico, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    except ImportError:
+        render(256, ico)                                     # Qt's ICO writer: single 256 px image
     if sys.platform == "darwin":
         iconset = os.path.join(out, "step2html.iconset")
         os.makedirs(iconset, exist_ok=True)

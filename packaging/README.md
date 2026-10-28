@@ -17,6 +17,25 @@ Produces `dist/Step2HTML-<version>-macos-<arch>.dmg` for the Mac it runs on (`x8
 The app is not signed or notarized. A downloaded copy is blocked by Gatekeeper the first time: open it
 with right-click → **Open** (or run `xattr -dr com.apple.quarantine /Applications/Step2HTML.app`).
 
+## Windows → portable `.zip` and installer
+
+On a Windows x64 machine with Python 3.12 (py launcher) and Inno Setup 6
+(`winget install Python.Python.3.12 JRSoftware.InnoSetup`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1
+```
+
+Produces, after a test conversion and a window start-up check:
+
+- `dist\windows\Step2HTML-<version>-windows-x64.zip`: portable; unzip anywhere and run `Step2HTML.exe`
+- `dist\windows\Step2HTML-<version>-Setup.exe`: installer (per user by default, no admin prompt;
+  Start-menu entry, optional desktop icon, optional "Open with" entry for `.step`/`.stp`, uninstaller)
+
+Both contain `Step2HTML.exe` (the app) and `step2html-cli.exe`, the console converter the app runs
+behind the scenes, which also works as the command-line tool. The packages are unsigned, so Windows
+SmartScreen asks for confirmation on first start (**More info → Run anyway**).
+
 ## Linux → `.deb`, Arch package, tarball
 
 ```bash

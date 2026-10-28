@@ -10,14 +10,19 @@ ICONS = os.path.join(ROOT, "build", "icons")
 with open(os.path.join(ROOT, "step2html.py"), encoding="utf-8") as f:
     VERSION = re.search(r'__version__ = "([^"]+)"', f.read()).group(1)
 
+# cadquery-ocp pulls these in as dependencies, but the converter never loads them
+EXCLUDES = ["vtk", "vtkmodules", "matplotlib", "numpy", "PIL", "tkinter", "contourpy", "kiwisolver",
+            "fontTools", "PySide6.QtNetwork", "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtOpenGL"]
+WIN = sys.platform == "win32"
+ICON = os.path.join(ICONS, "step2html.icns" if sys.platform == "darwin" else
+                    "step2html.ico" if WIN else "step2html.png")
+
 a = Analysis(
     [os.path.join(ROOT, "step2html_gui.py")],
     pathex=[ROOT],
     datas=[(os.path.join(ROOT, "lib"), "lib")],
     hiddenimports=["step2html"],
-    # cadquery-ocp pulls these in as dependencies, but the converter never loads them
-    excludes=["vtk", "vtkmodules", "matplotlib", "numpy", "PIL", "tkinter", "contourpy", "kiwisolver",
-              "fontTools", "PySide6.QtNetwork", "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtOpenGL"],
+    excludes=EXCLUDES,
     noarchive=False,
 )
 if sys.platform.startswith("linux"):
@@ -29,13 +34,23 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, [],
     exclude_binaries=True,
-    name="Step2HTML" if sys.platform == "darwin" else "step2html-gui",
+    name="Step2HTML" if (sys.platform == "darwin" or WIN) else "step2html-gui",
     console=False,
     strip=False,
     upx=False,
-    icon=os.path.join(ICONS, "step2html.icns" if sys.platform == "darwin" else "step2html.png"),
+    icon=ICON,
 )
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="Step2HTML")
+extra = []
+if WIN:
+    # Windows: a windowed exe has no console, so the converter is a separate console program,
+    # step2html-cli.exe, next to Step2HTML.exe (the app runs it hidden; it doubles as the CLI).
+    # (Not "step2html.exe": Windows file names are case-insensitive, it would overwrite Step2HTML.exe.)
+    b = Analysis([os.path.join(ROOT, "packaging", "step2html_cli.py")], pathex=[ROOT],
+                 datas=[(os.path.join(ROOT, "lib"), "lib")], excludes=EXCLUDES + ["PySide6", "shiboken6"])
+    exe_cli = EXE(PYZ(b.pure), b.scripts, [], exclude_binaries=True, name="step2html-cli", console=True,
+                  strip=False, upx=False, icon=ICON)
+    extra = [exe_cli, b.binaries, b.datas]
+coll = COLLECT(exe, a.binaries, a.datas, *extra, strip=False, upx=False, name="Step2HTML")
 
 if sys.platform == "darwin":
     app = BUNDLE(
