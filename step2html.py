@@ -31,7 +31,7 @@ import os
 import sys
 import tempfile
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 # When bundled into the desktop app (PyInstaller), the assets live in the unpacked bundle.
 HERE = getattr(sys, "_MEIPASS", None) or os.path.dirname(os.path.abspath(__file__))

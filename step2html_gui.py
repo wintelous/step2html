@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QFileDialo
 try:
     from step2html import __version__ as VERSION
 except Exception:                                   # converter deps missing: the GUI still opens
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
 APP_NAME = "Step2HTML"
 STEP_EXTS = (".step", ".stp", ".stpz", ".p21")

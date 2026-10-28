@@ -2,7 +2,7 @@
 # (packaging/build_linux.sh puts this file next to step2html-<version>-linux-x86_64.tar.gz).
 #   makepkg -si
 pkgname=step2html
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc="Convert STEP CAD models into self-contained 3D HTML viewers (desktop app + CLI)"
 arch=('x86_64')
