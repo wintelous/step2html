@@ -870,7 +870,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     if(c.userData._hasNamed) out.push(c); } return out; }
   function explodable(o){ return !o.userData._rigid && exKids(o).length>=2; }
   function exPrepare(){               // once: mark which nodes carry named parts
-    (function mark(o){ var named=!!(o.name && NAME_MAP[o.name]);
+    (function mark(o){ var named=!!partName(o);
       for(var i=0;i<o.children.length;i++){ var c=o.children[i]; if(c.userData._edge) continue; if(mark(c)) named=true; }
       o.userData._hasNamed=named; return named; })(root);
     EX.ready=true;
@@ -962,9 +962,13 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   $('ex-plus').onclick=function(){ if(EX.levels<EX.max){ EX.levels++; exRecompute(); } };
 
   // ---------- tree (lazy) ----------
+  function partName(o){               // real part name for a node, from its original glTF node name
+    var k=o.userData && o.userData._gname;
+    return (k && NAME_MAP[k]) || (o.name && NAME_MAP[o.name]) || null;
+  }
   function labelFor(o){
-    if(o.name && NAME_MAP[o.name]) return NAME_MAP[o.name];
-    if(o.name && o.name.trim()) return o.name.trim();
+    var pn=partName(o); if(pn) return pn;
+    var g=(o.userData._gname || o.name || '').trim(); if(g) return g;
     return o.isMesh ? 'Solid' : 'Group';
   }
   function childNodesOf(o){
@@ -1027,7 +1031,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
     chain.forEach(function(a){ var rec=a.userData._rec; if(rec) rec.setOpen(true); });
   }
   function nearestPart(mesh){
-    var p=mesh; while(p && p!==root){ if(p.name && NAME_MAP[p.name]) return p; p=p.parent; } return mesh;
+    var p=mesh; while(p && p!==root){ if(partName(p)) return p; p=p.parent; } return mesh;
   }
 
   // ---------- filter (flat results, capped) ----------
@@ -1490,6 +1494,13 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
   try{
     loader.parse(b64ToArrayBuffer(MODEL_B64),'',function(gltf){
       root=gltf.scene;
+      // three.js rewrites node names (spaces -> '_', drops '.:/[]', adds _1/_2 to duplicates), so keep
+      // each node's original glTF name for the NAME_MAP lookups
+      var gnodes=(gltf.parser && gltf.parser.json && gltf.parser.json.nodes) || [];
+      root.traverse(function(o){
+        var a=gltf.parser && gltf.parser.associations && gltf.parser.associations.get(o);
+        if(a && a.nodes!==undefined && gnodes[a.nodes] && gnodes[a.nodes].name) o.userData._gname=gnodes[a.nodes].name;
+      });
       var nParts=0;
       root.traverse(function(o){
         if(o.isMesh && o.material){
@@ -1501,7 +1512,7 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
           if(o.material.metalness!=null) o.material.metalness=Math.min(o.material.metalness,0.25);
           if(o.material.roughness==null) o.material.roughness=0.65;
         }
-        if(o.name && NAME_MAP[o.name]) nParts++;
+        if(partName(o)) nParts++;
       });
       scene.add(root);
       fitTo(root);
