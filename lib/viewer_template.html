@@ -896,7 +896,8 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
       if(o.userData._pinned) b.copy(boxes.get(o));
       else for(var i=0;i<o.children.length;i++){ var c=o.children[i]; if(!c.userData._edge) b.union(pins(c)); }
       pinBoxes.set(o,b); return b; })(root);
-    var inv=new THREE.Matrix4(), pc=new THREE.Vector3(), cc=new THREE.Vector3(), anchorW=new THREE.Vector3();
+    var inv=new THREE.Matrix4(), pc=new THREE.Vector3(), cc=new THREE.Vector3(), anchorW=new THREE.Vector3(),
+        ccW=new THREE.Vector3(), sz=new THREE.Vector3();
     (function walk(o, lvl){
       var kids=exKids(o);
       if(o.userData._rigid) return;
@@ -909,8 +910,17 @@ var NAME_MAP = __NAME_MAP__;  // { glTF-node-name (NAUO id) : real part name }
         var kb=boxes.get(k); if(kb.isEmpty()) return;
         if(!pinBoxes.get(k).isEmpty()) return;          // holds a pinned part -> stays put
         if(!pb.isEmpty() && kb.containsPoint(anchorW)) return;   // encloses the pinned parts -> stays, opens next level
+        // Push = distance from the spread point, but at least the part's own size along that direction,
+        // so thin stacked parts (a lid on a base) clear each other as well as far-out parts do.
+        kb.getCenter(ccW); var dW=ccW.clone().sub(anchorW), dist=dW.length();
         kb.getCenter(cc); cc.applyMatrix4(inv);
-        EX.moves.push({o:k, p0:k.position.clone(), v:cc.clone().sub(pc)});
+        var v=cc.clone().sub(pc);
+        if(dist>1e-9){
+          dW.divideScalar(dist); kb.getSize(sz);
+          var ext=Math.abs(dW.x)*sz.x + Math.abs(dW.y)*sz.y + Math.abs(dW.z)*sz.z;   // extent along the push
+          if(ext>dist) v.multiplyScalar(ext/dist);
+        }
+        EX.moves.push({o:k, p0:k.position.clone(), v:v});
       });
       kids.forEach(function(k){ walk(k, lvl+1); });
     })(root, 0);
